@@ -5,14 +5,14 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="pyfers",
-    version='1.0.0',
+    version='1.0.3',
     author="Darryn Anton Jordan",
     author_email="<darrynjordan@icloud.com>",
     description='XML generator for FERS',
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    install_requires=['numpy', 'h5py', 'scipy'],
+    install_requires=['numpy', 'h5py', 'scipy', 'matplotlib'],
     keywords=['radar', 'simulation', 'fers', 'uct'],
     url="https://github.com/darrynjordan/FERS",
     classifiers=[

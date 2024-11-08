@@ -8,4 +8,5 @@ pip3 install pyfers
 
 ## Examples
 ```
+import pyfers.fers as fers
 ```

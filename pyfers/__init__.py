@@ -1,1 +1,1 @@
-from pyfers.fers import FersXMLGenerator
+from pyfers import fers
