@@ -237,9 +237,9 @@ class FersXMLGenerator:
         my_file.write(prettify_xml(self.simulation))
         my_file.close()
 
-    def run(self, fersxml_path:str):
+    def run(self):
         try:
-            sbp.run(['fers', fersxml_path])
+            sbp.run(['fers', self.filename])
         except:
             print('ERROR: failed to launch - check that FERS is installed correctly.')
             exit(1)
