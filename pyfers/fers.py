@@ -2,7 +2,6 @@ import os
 import h5py
 import numpy as np
 import subprocess as sbp
-import matplotlib.pyplot as f
 import scipy.constants as const
 
 from xml.etree.ElementTree import Element, SubElement
@@ -138,8 +137,7 @@ class FersXMLGenerator:
         # add_noise(timing, 1, 1e-6)
         # add_noise(timing, 2, 1e-6)
 
-
-    def add_antenna(self, name, pattern, eff=1, a=1, b=2, g=5, d=0.1, is_plot=False, is_norm=False, n_points=1000, dB_range=40):
+    def add_antenna(self, name, pattern, eff=1, a=1, b=2, g=5, d=1):
         antenna = SubElement(self.simulation, 'antenna')
         antenna.set('name', name)
         antenna.set('pattern', pattern)
@@ -160,33 +158,6 @@ class FersXMLGenerator:
 
             gamma = SubElement(antenna, 'gamma')
             gamma.text = str(g)
-
-            if (is_plot):
-                theta = np.linspace(-np.pi, np.pi, n_points)
-                G = a*pow((np.sin(b*theta)/(b*theta)), g)
-                G = 10*np.log10(abs(G))
-
-                if (is_norm):
-                    G = G - np.nanmax(G)
-
-                ax = plt.subplot(1, 1, 1, projection='polar')
-                ax.plot(theta, G)
-
-                half_power_indx = find_nearest_index(G[0 : n_points//2], max(G) - 3)
-                ax.plot(theta[half_power_indx], G[half_power_indx], 'ro')
-                ax.plot((0, theta[half_power_indx]), (-dB_range, G[half_power_indx]), 'r')
-
-                half_power_indx = find_nearest_index(G[n_points//2 : n_points], max(G) - 3) + n_points//2
-                ax.plot(theta[half_power_indx], G[half_power_indx], 'ro')
-                ax.plot((0, theta[half_power_indx]), (-dB_range, G[half_power_indx]), 'r')
-
-                ax.set_title('Antenna Radiation Pattern')
-                ax.set_theta_zero_location('N')
-                ax.set_ylim(-dB_range, round_nearest(max(G), 10))
-                ax.set_rlabel_position(292.5)
-                ax.annotate('HPBW\n' + str(np.around(360*theta[half_power_indx]/np.pi, 2)) + '°', xy=(0, G[half_power_indx]), horizontalalignment='center', verticalalignment='top')
-                ax.grid(True)
-                plt.draw()
 
     def add_monostatic_radar(self, waypoints, antenna, timing, prf, pulse, window_length, noise_temp=290, window_skip=0, tx_type='pulsed'):
         platform = add_platform('radar_platform', self.simulation)
