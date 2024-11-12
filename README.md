@@ -58,4 +58,6 @@ for target in targets:
 
 fers_xml.write_xml()
 fers_xml.run()
+
+rx_matrix = fers.read_hdf5(FERS_OUTPUT_FILENAME)
 ```
