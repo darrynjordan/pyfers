@@ -2,7 +2,6 @@ import os
 import h5py
 import numpy as np
 import subprocess as sbp
-import scipy.constants as const
 
 from xml.etree.ElementTree import Element, SubElement
 from xml.etree.ElementTree import ElementTree as Tree
@@ -97,7 +96,7 @@ class FersXMLGenerator:
         interprate.text = str(interp_rate)
 
         light_speed = SubElement(parameters, 'c')
-        light_speed.text = str(const.speed_of_light)
+        light_speed.text = str(299792458)
 
     def add_pulse(self, name, pulse_file, power_watts, centre_freq):
         pulse = SubElement(self.simulation, 'pulse')
