@@ -64,6 +64,16 @@ def read_hdf5(filename):
     return dataset
 
 
+class FersTarget:
+    def __init__(self, name, x, y, z, t, rcs):
+        self.name = name
+        self.x = x
+        self.y = y
+        self.z = z
+        self.t = t
+        self.rcs = rcs
+
+
 class FersXMLGenerator:
     def __init__(self, xml_filename):
         """
@@ -183,22 +193,22 @@ class FersXMLGenerator:
         add_transmitter(tx_platform, 'transmitter', tx_type, antenna, pulse, timing, prf)
         add_receiver(rx_platform, 'receiver', nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp, window_skip)
 
-    def add_target(self, name, x, y, z, t, rcs):
+    def add_target(self, fers_target : FersTarget):
         platform = add_platform('target_platform', self.simulation)
         path = add_path(platform)
         add_rotation(platform)
 
-        for i in range (0, int(np.size(x))):
-            add_point(path, x[i], y[i], z[i], t[i])
+        for i in range (0, int(np.size(fers_target.x))):
+            add_point(path, fers_target.x[i], fers_target.y[i], fers_target.z[i], fers_target.t[i])
 
         target = SubElement(platform, 'target')
-        target.set('name', name)
+        target.set('name', fers_target.name)
 
         t_rcs = SubElement(target, 'rcs')
         t_rcs.set('type', 'isotropic')
 
         t_rcs_v = SubElement(t_rcs, 'value')
-        t_rcs_v.text = str(rcs)
+        t_rcs_v.text = str(fers_target.rcs)
 
     def write_xml(self):
         self.tree.write(self.filename)
