@@ -171,10 +171,10 @@ class FersXMLGenerator:
     def add_monostatic_radar(self, waypoints, antenna, timing, prf, pulse, window_length, noise_temp=290, window_skip=0, tx_type='pulsed'):
         platform = add_platform('radar_platform', self.simulation)
         path = add_path(platform)
-        add_rotation(platform)
+        add_fixedrotation(platform)
 
         for i in range (0, int(np.size(waypoints, axis=1))):
-            add_point(path, waypoints[0, i], waypoints[1, i], waypoints[2, i], waypoints[3, i])
+            add_positionwaypoint(path, waypoints[0, i], waypoints[1, i], waypoints[2, i], waypoints[3, i])
 
         add_monostatic(platform, 'receiver', tx_type, antenna, pulse, timing, prf, window_length, noise_temp, window_skip)
 
@@ -183,12 +183,12 @@ class FersXMLGenerator:
         rx_platform = add_platform('rx_platform', self.simulation)
         tx_path = add_path(tx_platform)
         rx_path = add_path(rx_platform)
-        add_rotation(tx_platform)
-        add_rotation(rx_platform)
+        add_fixedrotation(tx_platform)
+        add_fixedrotation(rx_platform)
 
         for i in range (0, int(np.size(waypoints, axis=1))):
-            add_point(tx_path, waypoints[0, i] + spacing[0]/2, waypoints[1, i] + spacing[1]/2, waypoints[2, i] + spacing[2]/2, waypoints[3, i])
-            add_point(rx_path, waypoints[0, i] - spacing[0]/2, waypoints[1, i] - spacing[1]/2, waypoints[2, i] - spacing[2]/2, waypoints[3, i])
+            add_positionwaypoint(tx_path, waypoints[0, i] + spacing[0]/2, waypoints[1, i] + spacing[1]/2, waypoints[2, i] + spacing[2]/2, waypoints[3, i])
+            add_positionwaypoint(rx_path, waypoints[0, i] - spacing[0]/2, waypoints[1, i] - spacing[1]/2, waypoints[2, i] - spacing[2]/2, waypoints[3, i])
 
         add_transmitter(tx_platform, 'transmitter', tx_type, antenna, pulse, timing, prf)
         add_receiver(rx_platform, 'receiver', nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp, window_skip)
@@ -196,10 +196,10 @@ class FersXMLGenerator:
     def add_target(self, fers_target : FersTarget):
         platform = add_platform('target_platform', self.simulation)
         path = add_path(platform)
-        add_rotation(platform)
+        add_fixedrotation(platform)
 
         for i in range (0, int(np.size(fers_target.x))):
-            add_point(path, fers_target.x[i], fers_target.y[i], fers_target.z[i], fers_target.t[i])
+            add_positionwaypoint(path, fers_target.x[i], fers_target.y[i], fers_target.z[i], fers_target.t[i])
 
         target = SubElement(platform, 'target')
         target.set('name', fers_target.name)
@@ -285,7 +285,7 @@ def add_path (platform, interp='linear'):
     path.set('interpolation', interp)
     return path
 
-def add_point(path, x, y, z, t):
+def add_positionwaypoint(path, x, y, z, t):
     point = SubElement(path, 'positionwaypoint')
 
     t_x = SubElement(point, 'x')
@@ -300,7 +300,7 @@ def add_point(path, x, y, z, t):
     t_t = SubElement(point, 'time')
     t_t.text = str(t)
 
-def add_rotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0):
+def add_fixedrotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0):
     rotation = SubElement(platform, 'fixedrotation')
 
     t_s_az = SubElement(rotation, 'startazimuth')
