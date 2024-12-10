@@ -170,7 +170,7 @@ class FersXMLGenerator:
 
     def add_monostatic_radar(self, waypoints, antenna, timing, prf, pulse, window_length, noise_temp=290, window_skip=0, tx_type='pulsed'):
         platform = add_platform('radar_platform', self.simulation)
-        path = add_path(platform)
+        path = add_motionpath(platform)
         add_fixedrotation(platform)
 
         for i in range (0, int(np.size(waypoints, axis=1))):
@@ -181,8 +181,8 @@ class FersXMLGenerator:
     def add_pseudo_monostatic_radar(self, spacing, waypoints, antenna, timing, prf, pulse, window_length, noise_temp=290, window_skip=0, tx_type='pulsed', nodirect='false', nopropagationloss='false'):
         tx_platform = add_platform('tx_platform', self.simulation)
         rx_platform = add_platform('rx_platform', self.simulation)
-        tx_path = add_path(tx_platform)
-        rx_path = add_path(rx_platform)
+        tx_path = add_motionpath(tx_platform)
+        rx_path = add_motionpath(rx_platform)
         add_fixedrotation(tx_platform)
         add_fixedrotation(rx_platform)
 
@@ -195,7 +195,7 @@ class FersXMLGenerator:
 
     def add_target(self, fers_target : FersTarget):
         platform = add_platform('target_platform', self.simulation)
-        path = add_path(platform)
+        path = add_motionpath(platform)
         add_fixedrotation(platform)
 
         for i in range (0, int(np.size(fers_target.x))):
@@ -280,7 +280,7 @@ def add_platform (name, root):
     platform.set('name', name)
     return platform
 
-def add_path (platform, interp='linear'):
+def add_motionpath (platform, interp='linear'):
     path = SubElement(platform, 'motionpath')
     path.set('interpolation', interp)
     return path
