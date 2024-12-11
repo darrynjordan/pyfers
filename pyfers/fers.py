@@ -178,21 +178,6 @@ class FersXMLGenerator:
 
         add_monostatic(platform, 'receiver', tx_type, antenna, pulse, timing, prf, window_length, noise_temp, window_skip)
 
-    def add_pseudo_monostatic_radar(self, spacing, waypoints, antenna, timing, prf, pulse, window_length, noise_temp=290, window_skip=0, tx_type='pulsed', nodirect='false', nopropagationloss='false'):
-        tx_platform = add_platform('tx_platform', self.simulation)
-        rx_platform = add_platform('rx_platform', self.simulation)
-        tx_path = add_motionpath(tx_platform)
-        rx_path = add_motionpath(rx_platform)
-        add_fixedrotation(tx_platform)
-        add_fixedrotation(rx_platform)
-
-        for i in range (0, int(np.size(waypoints, axis=1))):
-            add_positionwaypoint(tx_path, waypoints[0, i] + spacing[0]/2, waypoints[1, i] + spacing[1]/2, waypoints[2, i] + spacing[2]/2, waypoints[3, i])
-            add_positionwaypoint(rx_path, waypoints[0, i] - spacing[0]/2, waypoints[1, i] - spacing[1]/2, waypoints[2, i] - spacing[2]/2, waypoints[3, i])
-
-        add_transmitter(tx_platform, 'transmitter', tx_type, antenna, pulse, timing, prf)
-        add_receiver(rx_platform, 'receiver', nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp, window_skip)
-
     def add_target(self, fers_target : FersTarget):
         platform = add_platform('target_platform', self.simulation)
         motionpath = add_motionpath(platform)
