@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="pyfers",
-    version='1.0.7',
+    version='1.1.0',
     author="Darryn Anton Jordan",
     author_email="<darrynjordan@icloud.com>",
     description='XML generator for FERS',
