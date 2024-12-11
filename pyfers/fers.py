@@ -33,7 +33,7 @@ def read_hdf5(filename):
     if (os.path.exists(filename) == False):
         print("HDF5 file not found. Please check the path.")
         exit()
-    
+
     h5 = h5py.File(filename, 'r')
 
     dataset_list = list(h5.keys())
@@ -60,7 +60,7 @@ def read_hdf5(filename):
     dataset = np.array(i_matrix + 1j*q_matrix).astype('complex128')
 
     dataset *= scale
-    
+
     return dataset
 
 
@@ -170,11 +170,11 @@ class FersXMLGenerator:
 
     def add_monostatic_radar(self, waypoints, antenna, timing, prf, pulse, window_length, noise_temp=290, window_skip=0, tx_type='pulsed'):
         platform = add_platform('radar_platform', self.simulation)
-        path = add_motionpath(platform)
+        motionpath = add_motionpath(platform)
         add_fixedrotation(platform)
 
         for i in range (0, int(np.size(waypoints, axis=1))):
-            add_positionwaypoint(path, waypoints[0, i], waypoints[1, i], waypoints[2, i], waypoints[3, i])
+            add_positionwaypoint(motionpath, waypoints[0, i], waypoints[1, i], waypoints[2, i], waypoints[3, i])
 
         add_monostatic(platform, 'receiver', tx_type, antenna, pulse, timing, prf, window_length, noise_temp, window_skip)
 
@@ -195,11 +195,11 @@ class FersXMLGenerator:
 
     def add_target(self, fers_target : FersTarget):
         platform = add_platform('target_platform', self.simulation)
-        path = add_motionpath(platform)
+        motionpath = add_motionpath(platform)
         add_fixedrotation(platform)
 
         for i in range (0, int(np.size(fers_target.x))):
-            add_positionwaypoint(path, fers_target.x[i], fers_target.y[i], fers_target.z[i], fers_target.t[i])
+            add_positionwaypoint(motionpath, fers_target.x[i], fers_target.y[i], fers_target.z[i], fers_target.t[i])
 
         target = SubElement(platform, 'target')
         target.set('name', fers_target.name)
@@ -285,6 +285,11 @@ def add_motionpath (platform, interp='linear'):
     path.set('interpolation', interp)
     return path
 
+def add_rotationpath (platform, interp='linear'):
+    path = SubElement(platform, 'rotationpath')
+    path.set('interpolation', interp)
+    return path
+
 def add_positionwaypoint(path, x, y, z, t):
     point = SubElement(path, 'positionwaypoint')
 
@@ -300,6 +305,18 @@ def add_positionwaypoint(path, x, y, z, t):
     t_t = SubElement(point, 'time')
     t_t.text = str(t)
 
+def add_rotationwaypoint(path, el, az, t):
+    point = SubElement(path, 'rotationwaypoint')
+
+    t_el = SubElement(point, 'elevation')
+    t_el.text = str(el)
+
+    t_az = SubElement(point, 'azimuth')
+    t_az.text = str(az)
+
+    t_t = SubElement(point, 'time')
+    t_t.text = str(t)
+
 def add_fixedrotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0):
     rotation = SubElement(platform, 'fixedrotation')
 
@@ -311,7 +328,7 @@ def add_fixedrotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0
 
     t_s_el = SubElement(rotation, 'startelevation')
     t_s_el.text = str(s_el)
-    
+
     t_el_r = SubElement(rotation, 'elevationrate')
     t_el_r.text = str(el_rate)
 
