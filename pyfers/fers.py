@@ -65,13 +65,25 @@ def read_hdf5(filename):
 
 
 class FersTarget:
-    def __init__(self, name, x, y, z, t, rcs):
+    def __init__(self, name, rcs, position_waypoints):
         self.name = name
+        self.rcs = rcs
+        self.position_waypoints = position_waypoints
+
+
+class FersPositionWaypoint:
+    def __init__(self, x, y, z, t):
         self.x = x
         self.y = y
         self.z = z
         self.t = t
-        self.rcs = rcs
+
+
+class FersRotationWaypoint:
+    def __init__(self, az, el, t):
+        self.az = az
+        self.el = el
+        self.t = t
 
 
 class FersXMLGenerator:
@@ -168,23 +180,16 @@ class FersXMLGenerator:
             gamma = SubElement(antenna, 'gamma')
             gamma.text = str(g)
 
-    def add_monostatic_radar(self, waypoints, antenna, timing, prf, pulse, window_length, noise_temp=290, window_skip=0, tx_type='pulsed'):
+    def add_monostatic_radar(self, antenna, timing, prf, pulse, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, tx_type='pulsed'):
         platform = add_platform('radar_platform', self.simulation)
-        motionpath = add_motionpath(platform)
-        add_fixedrotation(platform)
-
-        for i in range (0, int(np.size(waypoints, axis=1))):
-            add_positionwaypoint(motionpath, waypoints[0, i], waypoints[1, i], waypoints[2, i], waypoints[3, i])
-
+        add_motionpath(platform, position_waypoints)
+        add_rotationpath(platform, rotation_waypoints)
         add_monostatic(platform, 'receiver', tx_type, antenna, pulse, timing, prf, window_length, noise_temp, window_skip)
 
-    def add_target(self, fers_target : FersTarget):
+    def add_target(self, fers_target: FersTarget):
         platform = add_platform('target_platform', self.simulation)
-        motionpath = add_motionpath(platform)
+        add_motionpath(platform, fers_target.position_waypoints)
         add_fixedrotation(platform)
-
-        for i in range (0, int(np.size(fers_target.x))):
-            add_positionwaypoint(motionpath, fers_target.x[i], fers_target.y[i], fers_target.z[i], fers_target.t[i])
 
         target = SubElement(platform, 'target')
         target.set('name', fers_target.name)
@@ -265,42 +270,47 @@ def add_platform (name, root):
     platform.set('name', name)
     return platform
 
-def add_motionpath (platform, interp='linear'):
-    path = SubElement(platform, 'motionpath')
-    path.set('interpolation', interp)
-    return path
+def add_motionpath(platform, position_waypoints, interp='linear'):
+    motionpath = SubElement(platform, 'motionpath')
+    motionpath.set('interpolation', interp)
 
-def add_rotationpath (platform, interp='linear'):
-    path = SubElement(platform, 'rotationpath')
-    path.set('interpolation', interp)
-    return path
+    for waypoint in position_waypoints:
+        add_positionwaypoint(motionpath, waypoint)
 
-def add_positionwaypoint(path, x, y, z, t):
+
+def add_rotationpath (platform, rotation_waypoints, interp='linear'):
+    rotationpath = SubElement(platform, 'rotationpath')
+    rotationpath.set('interpolation', interp)
+
+    for waypoint in rotation_waypoints:
+        add_rotationwaypoint(rotationpath, waypoint)
+
+def add_positionwaypoint(path, waypoint: FersPositionWaypoint):
     point = SubElement(path, 'positionwaypoint')
 
     t_x = SubElement(point, 'x')
-    t_x.text = str(x)
+    t_x.text = str(waypoint.x)
 
     t_y = SubElement(point, 'y')
-    t_y.text = str(y)
+    t_y.text = str(waypoint.y)
 
     t_a = SubElement(point, 'altitude')
-    t_a.text = str(z)
+    t_a.text = str(waypoint.z)
 
     t_t = SubElement(point, 'time')
-    t_t.text = str(t)
+    t_t.text = str(waypoint.t)
 
-def add_rotationwaypoint(path, el, az, t):
+def add_rotationwaypoint(path, waypoint: FersRotationWaypoint):
     point = SubElement(path, 'rotationwaypoint')
 
     t_el = SubElement(point, 'elevation')
-    t_el.text = str(el)
+    t_el.text = str(waypoint.el)
 
     t_az = SubElement(point, 'azimuth')
-    t_az.text = str(az)
+    t_az.text = str(waypoint.az)
 
     t_t = SubElement(point, 'time')
-    t_t.text = str(t)
+    t_t.text = str(waypoint.t)
 
 def add_fixedrotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0):
     rotation = SubElement(platform, 'fixedrotation')
