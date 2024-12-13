@@ -180,15 +180,15 @@ class FersXMLGenerator:
             gamma = SubElement(antenna, 'gamma')
             gamma.text = str(g)
 
-    def add_monostatic_radar(self, antenna, timing, prf, pulse, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, tx_type='pulsed'):
+    def add_monostatic_radar(self, antenna, timing, prf, pulse, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, tx_type='pulsed', interp='linear'):
         platform = add_platform('radar_platform', self.simulation)
-        add_motionpath(platform, position_waypoints)
-        add_rotationpath(platform, rotation_waypoints)
+        add_motionpath(platform, position_waypoints, interp)
+        add_rotationpath(platform, rotation_waypoints, interp)
         add_monostatic(platform, 'receiver', tx_type, antenna, pulse, timing, prf, window_length, noise_temp, window_skip)
 
-    def add_target(self, fers_target: FersTarget):
+    def add_target(self, fers_target: FersTarget, interp='linear'):
         platform = add_platform('target_platform', self.simulation)
-        add_motionpath(platform, fers_target.position_waypoints)
+        add_motionpath(platform, fers_target.position_waypoints, interp)
         add_fixedrotation(platform)
 
         target = SubElement(platform, 'target')
