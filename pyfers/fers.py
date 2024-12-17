@@ -182,7 +182,7 @@ class FersXMLGenerator:
         # add_noise(timing, 1, 1e-6)
         # add_noise(timing, 2, 1e-6)
 
-    def add_antenna(self, name, pattern, eff=1, a=1, b=2, g=5, d=1, azscale=1, elscale=1):
+    def add_antenna(self, name, pattern, eff=1, a=1, b=2, g=5, d=1, azscale=1, elscale=1, filename=None):
         antenna = SubElement(self.simulation, 'antenna')
         antenna.set('name', name)
         antenna.set('pattern', pattern)
@@ -210,6 +210,9 @@ class FersXMLGenerator:
 
             el = SubElement(antenna, 'elscale')
             el.text = str(elscale)
+
+        if (pattern == "file"):
+            antenna.set('filename', filename)
 
     def add_monostatic_radar(self, antenna, timing, prf, pulse, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, tx_type='pulsed', interp='linear'):
         platform = add_platform('radar_platform', self.simulation)
