@@ -92,8 +92,9 @@ class FersAntennaXML:
         FersAntennaXML constructor.
         """
         self.filename = xml_filename
-        self.elevation = Element('elevation')
-        self.azimuth = Element('azimuth')
+        self.root = Element('antenna')
+        self.elevation = SubElement(self.root, 'elevation')
+        self.azimuth = SubElement(self.root, 'azimuth')
 
     def add_gainsample(self, plane, angle, gain):
         gainsample = SubElement(plane, "gainsample")
@@ -106,8 +107,7 @@ class FersAntennaXML:
 
     def write(self):
         with open(self.filename, "w") as f:
-            f.write(prettify_xml(self.elevation))
-            f.write(prettify_xml(self.azimuth))
+            f.write(prettify_xml(self.root))
 
 
 class FersXMLGenerator:
@@ -211,7 +211,7 @@ class FersXMLGenerator:
             el = SubElement(antenna, 'elscale')
             el.text = str(elscale)
 
-        if (pattern == "file"):
+        if (pattern == "xml"):
             antenna.set('filename', filename)
 
     def add_monostatic_radar(self, antenna, timing, prf, pulse, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, tx_type='pulsed', interp='linear'):
