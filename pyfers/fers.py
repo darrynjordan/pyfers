@@ -86,6 +86,30 @@ class FersRotationWaypoint:
         self.t = t
 
 
+class FersAntennaXML:
+    def __init__(self, xml_filename):
+        """
+        FersAntennaXML constructor.
+        """
+        self.filename = xml_filename
+        self.elevation = Element('elevation')
+        self.azimuth = Element('azimuth')
+
+    def add_gainsample(self, plane, angle, gain):
+        gainsample = SubElement(plane, "gainsample")
+
+        a = SubElement(gainsample, "angle")
+        a.text = str(angle)
+
+        g = SubElement(gainsample, "gain")
+        g.text = str(gain)
+
+    def write(self):
+        with open(self.filename, "w") as f:
+            f.write(prettify_xml(self.elevation))
+            f.write(prettify_xml(self.azimuth))
+
+
 class FersXMLGenerator:
     def __init__(self, xml_filename):
         """
@@ -343,3 +367,9 @@ def add_noise(clock, alpha, weight):
 
     t_weight = SubElement(noise_entry, 'weight')
     t_weight.text = str(weight)
+
+if __name__ == "__main__":
+    antenna = FersAntennaXML("test.xml")
+    antenna.add_gainsample(antenna.elevation, 0, 1)
+    antenna.add_gainsample(antenna.azimuth, 0, 5)
+    antenna.write()
