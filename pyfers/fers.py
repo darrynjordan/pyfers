@@ -2,19 +2,7 @@ import os
 import h5py
 import numpy as np
 import subprocess as sbp
-
-from xml.etree.ElementTree import Element, SubElement
-from xml.etree.ElementTree import ElementTree as Tree
-from xml.etree import ElementTree
-from xml.dom import minidom
-
-def prettify_xml(elem):
-    """
-    Return a pretty-printed XML string for the Element.
-    """
-    rough_string = ElementTree.tostring(elem, 'utf-8')
-    reparsed = minidom.parseString(rough_string)
-    return reparsed.toprettyxml(indent="    ")
+from lxml import etree as ET
 
 def write_hdf5(dataset, filename):
     '''
@@ -92,17 +80,17 @@ class FersAntennaXML:
         FersAntennaXML constructor.
         """
         self.filename = xml_filename
-        self.root = Element('antenna')
-        self.elevation = SubElement(self.root, 'elevation')
-        self.azimuth = SubElement(self.root, 'azimuth')
+        self.root = ET.Element('antenna')
+        self.elevation = ET.SubElement(self.root, 'elevation')
+        self.azimuth = ET.SubElement(self.root, 'azimuth')
 
     def add_gainsample(self, plane, angle, gain):
-        gainsample = SubElement(plane, "gainsample")
+        gainsample = ET.SubElement(plane, "gainsample")
 
-        a = SubElement(gainsample, "angle")
+        a = ET.SubElement(gainsample, "angle")
         a.text = str(angle)
 
-        g = SubElement(gainsample, "gain")
+        g = ET.SubElement(gainsample, "gain")
         g.text = str(gain)
 
     def write(self):
@@ -116,64 +104,64 @@ class FersXMLGenerator:
         FersXMLGenerator constructor.
         """
         self.filename = xml_filename
-        self.simulation = Element('simulation')
+        self.simulation = ET.Element('simulation')
         self.simulation.set('name', 'milosar')
-        self.tree = Tree(self.simulation)
+        self.tree = ET.ElementTree(self.simulation)
 
     def add_parameters(self, t_start, t_end, sim_rate, bits, over_sample=1, interp_rate=1000):
-        parameters = SubElement(self.simulation, 'parameters')
+        parameters = ET.SubElement(self.simulation, 'parameters')
 
-        starttime = SubElement(parameters, 'starttime')
+        starttime = ET.SubElement(parameters, 'starttime')
         starttime.text = str(t_start)
 
-        endtime = SubElement(parameters, 'endtime')
+        endtime = ET.SubElement(parameters, 'endtime')
         endtime.text = str(t_end)
 
-        rate = SubElement(parameters, 'rate')
+        rate = ET.SubElement(parameters, 'rate')
         rate.text = str(sim_rate)
 
-        adc_bits = SubElement(parameters, 'adc_bits')
+        adc_bits = ET.SubElement(parameters, 'adc_bits')
         adc_bits.text = str(bits)
 
-        oversample = SubElement(parameters, 'oversample')
+        oversample = ET.SubElement(parameters, 'oversample')
         oversample.text = str(over_sample)
 
-        interprate = SubElement(parameters, 'interprate')
+        interprate = ET.SubElement(parameters, 'interprate')
         interprate.text = str(interp_rate)
 
-        light_speed = SubElement(parameters, 'c')
+        light_speed = ET.SubElement(parameters, 'c')
         light_speed.text = str(299792458)
 
     def add_pulse(self, name, pulse_file, power_watts, centre_freq):
-        pulse = SubElement(self.simulation, 'pulse')
+        pulse = ET.SubElement(self.simulation, 'pulse')
         pulse.set('name', name)
         pulse.set('type', 'file')
         pulse.set('filename', pulse_file)
 
-        power = SubElement(pulse, 'power')
+        power = ET.SubElement(pulse, 'power')
         power.text = str(power_watts)
 
-        carrier = SubElement(pulse, 'carrier')
+        carrier = ET.SubElement(pulse, 'carrier')
         carrier.text = str(centre_freq)
 
     def add_clock(self, name, frequency, f_offset=0, random_f_offset=0, p_offset=0, random_p_offset=0, synconpulse='true'):
-        timing = SubElement(self.simulation, 'timing')
+        timing = ET.SubElement(self.simulation, 'timing')
         timing.set('name', name)
         timing.set('synconpulse', synconpulse)
 
-        freq = SubElement(timing, 'frequency')
+        freq = ET.SubElement(timing, 'frequency')
         freq.text = str(frequency)
 
-        freq_offset = SubElement(timing, 'freq_offset')
+        freq_offset = ET.SubElement(timing, 'freq_offset')
         freq_offset.text = str(f_offset)
 
-        random_freq_offset = SubElement(timing, 'random_freq_offset')
+        random_freq_offset = ET.SubElement(timing, 'random_freq_offset')
         random_freq_offset.text = str(random_f_offset)
 
-        phase_offset = SubElement(timing, 'phase_offset')
+        phase_offset = ET.SubElement(timing, 'phase_offset')
         phase_offset.text = str(p_offset)
 
-        random_phase_offset = SubElement(timing, 'random_phase_offset')
+        random_phase_offset = ET.SubElement(timing, 'random_phase_offset')
         random_phase_offset.text = str(random_p_offset)
 
         # add_noise(timing, -2, 1e-6)
@@ -183,32 +171,32 @@ class FersXMLGenerator:
         # add_noise(timing, 2, 1e-6)
 
     def add_antenna(self, name, pattern, eff=1, a=1, b=2, g=5, d=1, azscale=1, elscale=1, filename=None):
-        antenna = SubElement(self.simulation, 'antenna')
+        antenna = ET.SubElement(self.simulation, 'antenna')
         antenna.set('name', name)
         antenna.set('pattern', pattern)
 
-        efficiency = SubElement(antenna, 'efficiency')
+        efficiency = ET.SubElement(antenna, 'efficiency')
         efficiency.text = str(eff)
 
         if (pattern == "parabolic"):
-            diameter = SubElement(antenna, 'diameter')
+            diameter = ET.SubElement(antenna, 'diameter')
             diameter.text = str(d)
 
         if (pattern == "sinc"):
-            alpha = SubElement(antenna, 'alpha')
+            alpha = ET.SubElement(antenna, 'alpha')
             alpha.text = str(a)
 
-            beta = SubElement(antenna, 'beta')
+            beta = ET.SubElement(antenna, 'beta')
             beta.text = str(b)
 
-            gamma = SubElement(antenna, 'gamma')
+            gamma = ET.SubElement(antenna, 'gamma')
             gamma.text = str(g)
 
         if (pattern == "gaussian"):
-            az = SubElement(antenna, 'azscale')
+            az = ET.SubElement(antenna, 'azscale')
             az.text = str(azscale)
 
-            el = SubElement(antenna, 'elscale')
+            el = ET.SubElement(antenna, 'elscale')
             el.text = str(elscale)
 
         if (pattern == "xml"):
@@ -225,21 +213,21 @@ class FersXMLGenerator:
         add_motionpath(platform, fers_target.position_waypoints, interp)
         add_fixedrotation(platform)
 
-        target = SubElement(platform, 'target')
+        target = ET.SubElement(platform, 'target')
         target.set('name', fers_target.name)
 
-        t_rcs = SubElement(target, 'rcs')
+        t_rcs = ET.SubElement(target, 'rcs')
         t_rcs.set('type', 'isotropic')
 
-        t_rcs_v = SubElement(t_rcs, 'value')
+        t_rcs_v = ET.SubElement(t_rcs, 'value')
         t_rcs_v.text = str(fers_target.rcs)
 
     def write_xml(self):
-        self.tree.write(self.filename)
-
-        my_file = open(self.filename, "w")
-        my_file.write(prettify_xml(self.simulation))
-        my_file.close()
+        self.tree.write(self.filename,
+                        pretty_print=True,
+                        encoding="utf-8",
+                        xml_declaration=True,
+                        doctype='<!DOCTYPE simulation SYSTEM "fers-xml.dtd">')
 
     def run(self):
         try:
@@ -249,63 +237,63 @@ class FersXMLGenerator:
             exit(1)
 
 def add_monostatic(platform, name, tx_type, antenna, pulse, timing, prf, window_length, noise_temp=290, window_skip=0):
-    monostatic = SubElement(platform, 'monostatic')
+    monostatic = ET.SubElement(platform, 'monostatic')
     monostatic.set('name', name)
     monostatic.set('type', tx_type)
     monostatic.set('antenna', antenna)
     monostatic.set('pulse', pulse)
     monostatic.set('timing', timing)
 
-    skip = SubElement(monostatic, 'window_skip')
+    skip = ET.SubElement(monostatic, 'window_skip')
     skip.text = str(window_skip)
 
-    window = SubElement(monostatic, 'window_length')
+    window = ET.SubElement(monostatic, 'window_length')
     window.text = str(window_length)
 
-    rx_prf = SubElement(monostatic, 'prf')
+    rx_prf = ET.SubElement(monostatic, 'prf')
     rx_prf.text = str(prf)
 
-    noise = SubElement(monostatic, 'noise_temp')
+    noise = ET.SubElement(monostatic, 'noise_temp')
     noise.text = str(noise_temp)
 
 def add_transmitter (platform, name, tx_type, antenna, pulse, timing, prf):
-    transmitter = SubElement(platform, 'transmitter')
+    transmitter = ET.SubElement(platform, 'transmitter')
     transmitter.set('name', name)
     transmitter.set('type', tx_type)
     transmitter.set('antenna', antenna)
     transmitter.set('pulse', pulse)
     transmitter.set('timing', timing)
 
-    tx_prf = SubElement(transmitter, 'prf')
+    tx_prf = ET.SubElement(transmitter, 'prf')
     tx_prf.text = str(prf)
 
 def add_receiver (platform, name, nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp=290, window_skip=0):
-    receiver = SubElement(platform, 'receiver')
+    receiver = ET.SubElement(platform, 'receiver')
     receiver.set('name', name)
     receiver.set('nodirect', nodirect)
     receiver.set('antenna', antenna)
     receiver.set('nopropagationloss', nopropagationloss)
     receiver.set('timing', timing)
 
-    skip = SubElement(receiver, 'window_skip')
+    skip = ET.SubElement(receiver, 'window_skip')
     skip.text = str(window_skip)
 
-    window = SubElement(receiver, 'window_length')
+    window = ET.SubElement(receiver, 'window_length')
     window.text = str(window_length)
 
-    rx_prf = SubElement(receiver, 'prf')
+    rx_prf = ET.SubElement(receiver, 'prf')
     rx_prf.text = str(prf)
 
-    noise = SubElement(receiver, 'noise_temp')
+    noise = ET.SubElement(receiver, 'noise_temp')
     noise.text = str(noise_temp)
 
 def add_platform (name, root):
-    platform = SubElement(root, 'platform')
+    platform = ET.SubElement(root, 'platform')
     platform.set('name', name)
     return platform
 
 def add_motionpath(platform, position_waypoints, interp='linear'):
-    motionpath = SubElement(platform, 'motionpath')
+    motionpath = ET.SubElement(platform, 'motionpath')
     motionpath.set('interpolation', interp)
 
     for waypoint in position_waypoints:
@@ -313,66 +301,60 @@ def add_motionpath(platform, position_waypoints, interp='linear'):
 
 
 def add_rotationpath (platform, rotation_waypoints, interp='linear'):
-    rotationpath = SubElement(platform, 'rotationpath')
+    rotationpath = ET.SubElement(platform, 'rotationpath')
     rotationpath.set('interpolation', interp)
 
     for waypoint in rotation_waypoints:
         add_rotationwaypoint(rotationpath, waypoint)
 
 def add_positionwaypoint(path, waypoint: FersPositionWaypoint):
-    point = SubElement(path, 'positionwaypoint')
+    point = ET.SubElement(path, 'positionwaypoint')
 
-    t_x = SubElement(point, 'x')
+    t_x = ET.SubElement(point, 'x')
     t_x.text = str(waypoint.x)
 
-    t_y = SubElement(point, 'y')
+    t_y = ET.SubElement(point, 'y')
     t_y.text = str(waypoint.y)
 
-    t_a = SubElement(point, 'altitude')
+    t_a = ET.SubElement(point, 'altitude')
     t_a.text = str(waypoint.z)
 
-    t_t = SubElement(point, 'time')
+    t_t = ET.SubElement(point, 'time')
     t_t.text = str(waypoint.t)
 
 def add_rotationwaypoint(path, waypoint: FersRotationWaypoint):
-    point = SubElement(path, 'rotationwaypoint')
+    point = ET.SubElement(path, 'rotationwaypoint')
 
-    t_el = SubElement(point, 'elevation')
+    t_el = ET.SubElement(point, 'elevation')
     t_el.text = str(waypoint.el)
 
-    t_az = SubElement(point, 'azimuth')
+    t_az = ET.SubElement(point, 'azimuth')
     t_az.text = str(waypoint.az)
 
-    t_t = SubElement(point, 'time')
+    t_t = ET.SubElement(point, 'time')
     t_t.text = str(waypoint.t)
 
 def add_fixedrotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0):
-    rotation = SubElement(platform, 'fixedrotation')
+    rotation = ET.SubElement(platform, 'fixedrotation')
 
-    t_s_az = SubElement(rotation, 'startazimuth')
+    t_s_az = ET.SubElement(rotation, 'startazimuth')
     t_s_az.text = str(s_az)
 
-    t_az_r = SubElement(rotation, 'azimuthrate')
+    t_az_r = ET.SubElement(rotation, 'azimuthrate')
     t_az_r.text = str(az_rate)
 
-    t_s_el = SubElement(rotation, 'startelevation')
+    t_s_el = ET.SubElement(rotation, 'startelevation')
     t_s_el.text = str(s_el)
 
-    t_el_r = SubElement(rotation, 'elevationrate')
+    t_el_r = ET.SubElement(rotation, 'elevationrate')
     t_el_r.text = str(el_rate)
 
 
 def add_noise(clock, alpha, weight):
-    noise_entry = SubElement(clock, 'noise_entry')
+    noise_entry = ET.SubElement(clock, 'noise_entry')
 
-    t_alpha = SubElement(noise_entry, 'alpha')
+    t_alpha = ET.SubElement(noise_entry, 'alpha')
     t_alpha.text = str(alpha)
 
-    t_weight = SubElement(noise_entry, 'weight')
+    t_weight = ET.SubElement(noise_entry, 'weight')
     t_weight.text = str(weight)
-
-if __name__ == "__main__":
-    antenna = FersAntennaXML("test.xml")
-    antenna.add_gainsample(antenna.elevation, 0, 1)
-    antenna.add_gainsample(antenna.azimuth, 0, 5)
-    antenna.write()
