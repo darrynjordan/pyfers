@@ -83,6 +83,7 @@ class FersAntennaXML:
         self.root = ET.Element('antenna')
         self.elevation = ET.SubElement(self.root, 'elevation')
         self.azimuth = ET.SubElement(self.root, 'azimuth')
+        self.tree = ET.ElementTree(self.root)
 
     def add_gainsample(self, plane, angle, gain):
         gainsample = ET.SubElement(plane, "gainsample")
@@ -93,9 +94,11 @@ class FersAntennaXML:
         g = ET.SubElement(gainsample, "gain")
         g.text = str(gain)
 
-    def write(self):
-        with open(self.filename, "w") as f:
-            f.write(prettify_xml(self.root))
+    def write_xml(self):
+        self.tree.write(self.filename,
+            pretty_print=True,
+            encoding="utf-8",
+            xml_declaration=True)
 
 
 class FersXMLGenerator:
