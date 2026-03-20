@@ -102,13 +102,13 @@ class FersAntennaXML:
 
 
 class FersXMLGenerator:
-    def __init__(self, xml_filename):
+    def __init__(self, sim_name:str, xml_filename:str):
         """
         FersXMLGenerator constructor.
         """
         self.filename = xml_filename
         self.simulation = ET.Element('simulation')
-        self.simulation.set('name', 'milosar')
+        self.simulation.set('name', sim_name)
         self.tree = ET.ElementTree(self.simulation)
 
     def add_parameters(self, t_start, t_end, sim_rate, bits, over_sample=1, interp_rate=1000):
@@ -123,31 +123,50 @@ class FersXMLGenerator:
         rate = ET.SubElement(parameters, 'rate')
         rate.text = str(sim_rate)
 
+        light_speed = ET.SubElement(parameters, 'c')
+        light_speed.text = str(299792458)
+
+        sim_sample_rate = ET.SubElement(parameters, 'simSamplingRate')
+        sim_sample_rate.text = str(0)
+
+        seed = ET.SubElement(parameters, 'randomseed')
+        seed.text = str(0)
+
         adc_bits = ET.SubElement(parameters, 'adc_bits')
         adc_bits.text = str(bits)
 
         oversample = ET.SubElement(parameters, 'oversample')
         oversample.text = str(over_sample)
 
-        interprate = ET.SubElement(parameters, 'interprate')
-        interprate.text = str(interp_rate)
+        # Geodetic Origin for the simulation coordinate system (used for ENU frame)
+        origin = ET.SubElement(parameters, 'origin')
+        origin.set('latitude', '1')
+        origin.set('longitude', '2')
+        origin.set('altitude', '3')
 
-        light_speed = ET.SubElement(parameters, 'c')
-        light_speed.text = str(299792458)
+        # Coordinate System for the simulation input coordinates
+        coordinatesystem = ET.SubElement(parameters, 'coordinatesystem')
+        coordinatesystem.set('frame', 'ENU') # ENU, UTM, ECEF
+        coordinatesystem.set('zone', '32')
+        coordinatesystem.set('hemisphere', 'N') # N, S
 
-    def add_pulse(self, name, pulse_file, power_watts, centre_freq):
-        pulse = ET.SubElement(self.simulation, 'pulse')
-        pulse.set('name', name)
-        pulse.set('type', 'file')
-        pulse.set('filename', pulse_file)
+    def add_waveform(self, name, waveform_file, power_watts, carrier_frequency):
+        waveform = ET.SubElement(self.simulation, 'pulse')
+        waveform.set('name', name)
 
-        power = ET.SubElement(pulse, 'power')
+        # only continuous-wave and pulsed supported
+        # cw = ET.SubElement(waveform, 'cw')
+
+        pulsed_from_file = ET.SubElement(waveform, 'pulsed_from_file')
+        pulsed_from_file.set('filename', waveform_file)
+
+        power = ET.SubElement(waveform, 'power')
         power.text = str(power_watts)
 
-        carrier = ET.SubElement(pulse, 'carrier')
-        carrier.text = str(centre_freq)
+        carrier = ET.SubElement(waveform, 'carrier_frequency')
+        carrier.text = str(carrier_frequency)
 
-    def add_clock(self, name, frequency, f_offset=0, random_f_offset=0, p_offset=0, random_p_offset=0, synconpulse='true'):
+    def add_clock(self, name, frequency, f_offset=0, random_f_offset=0, p_offset=0, random_p_offset=0, synconpulse='false'):
         timing = ET.SubElement(self.simulation, 'timing')
         timing.set('name', name)
         timing.set('synconpulse', synconpulse)
@@ -158,13 +177,13 @@ class FersXMLGenerator:
         freq_offset = ET.SubElement(timing, 'freq_offset')
         freq_offset.text = str(f_offset)
 
-        random_freq_offset = ET.SubElement(timing, 'random_freq_offset')
+        random_freq_offset = ET.SubElement(timing, 'random_freq_offset_stdev')
         random_freq_offset.text = str(random_f_offset)
 
         phase_offset = ET.SubElement(timing, 'phase_offset')
         phase_offset.text = str(p_offset)
 
-        random_phase_offset = ET.SubElement(timing, 'random_phase_offset')
+        random_phase_offset = ET.SubElement(timing, 'random_phase_offset_stdev')
         random_phase_offset.text = str(random_p_offset)
 
         # add_noise(timing, -2, 1e-6)
@@ -178,8 +197,8 @@ class FersXMLGenerator:
         antenna.set('name', name)
         antenna.set('pattern', pattern)
 
-        efficiency = ET.SubElement(antenna, 'efficiency')
-        efficiency.text = str(eff)
+        if (pattern == "xml"):
+            antenna.set('filename', filename)
 
         if (pattern == "parabolic"):
             diameter = ET.SubElement(antenna, 'diameter')
@@ -202,8 +221,8 @@ class FersXMLGenerator:
             el = ET.SubElement(antenna, 'elscale')
             el.text = str(elscale)
 
-        if (pattern == "xml"):
-            antenna.set('filename', filename)
+        efficiency = ET.SubElement(antenna, 'efficiency')
+        efficiency.text = str(eff)
 
     def add_monostatic_radar(self, antenna, timing, prf, pulse, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, tx_type='pulsed', interp='linear'):
         platform = add_platform('radar_platform', self.simulation)
