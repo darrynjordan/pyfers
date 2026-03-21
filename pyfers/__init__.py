@@ -111,7 +111,7 @@ class FersXMLGenerator:
         self.simulation.set('name', sim_name)
         self.tree = ET.ElementTree(self.simulation)
 
-    def add_parameters(self, t_start, t_end, sim_rate, bits, over_sample=1, interp_rate=1000):
+    def add_parameters(self, t_start, t_end, sim_rate, bits, over_sample=1):
         parameters = ET.SubElement(self.simulation, 'parameters')
 
         starttime = ET.SubElement(parameters, 'starttime')
@@ -126,11 +126,11 @@ class FersXMLGenerator:
         light_speed = ET.SubElement(parameters, 'c')
         light_speed.text = str(299792458)
 
-        sim_sample_rate = ET.SubElement(parameters, 'simSamplingRate')
-        sim_sample_rate.text = str(0)
+        # sim_sample_rate = ET.SubElement(parameters, 'simSamplingRate')
+        # sim_sample_rate.text = str(0)
 
-        seed = ET.SubElement(parameters, 'randomseed')
-        seed.text = str(0)
+        # seed = ET.SubElement(parameters, 'randomseed')
+        # seed.text = str(0)
 
         adc_bits = ET.SubElement(parameters, 'adc_bits')
         adc_bits.text = str(bits)
@@ -138,33 +138,30 @@ class FersXMLGenerator:
         oversample = ET.SubElement(parameters, 'oversample')
         oversample.text = str(over_sample)
 
-        # Geodetic Origin for the simulation coordinate system (used for ENU frame)
-        origin = ET.SubElement(parameters, 'origin')
-        origin.set('latitude', '1')
-        origin.set('longitude', '2')
-        origin.set('altitude', '3')
+        # # Geodetic Origin for the simulation coordinate system (used for ENU frame)
+        # origin = ET.SubElement(parameters, 'origin')
+        # origin.set('latitude', '1')
+        # origin.set('longitude', '2')
+        # origin.set('altitude', '3')
 
-        # Coordinate System for the simulation input coordinates
-        coordinatesystem = ET.SubElement(parameters, 'coordinatesystem')
-        coordinatesystem.set('frame', 'ENU') # ENU, UTM, ECEF
-        coordinatesystem.set('zone', '32')
-        coordinatesystem.set('hemisphere', 'N') # N, S
+        # # Coordinate System for the simulation input coordinates
+        # coordinatesystem = ET.SubElement(parameters, 'coordinatesystem')
+        # coordinatesystem.set('frame', 'ENU') # ENU, UTM, ECEF
+        # coordinatesystem.set('zone', '32')
+        # coordinatesystem.set('hemisphere', 'N') # N, S
 
     def add_waveform(self, name, waveform_file, power_watts, carrier_frequency):
-        waveform = ET.SubElement(self.simulation, 'pulse')
+        waveform = ET.SubElement(self.simulation, 'waveform')
         waveform.set('name', name)
-
-        # only continuous-wave and pulsed supported
-        # cw = ET.SubElement(waveform, 'cw')
-
-        pulsed_from_file = ET.SubElement(waveform, 'pulsed_from_file')
-        pulsed_from_file.set('filename', waveform_file)
 
         power = ET.SubElement(waveform, 'power')
         power.text = str(power_watts)
 
         carrier = ET.SubElement(waveform, 'carrier_frequency')
         carrier.text = str(carrier_frequency)
+
+        pulsed_from_file = ET.SubElement(waveform, 'pulsed_from_file')
+        pulsed_from_file.set('filename', waveform_file)
 
     def add_clock(self, name, frequency, f_offset=0, random_f_offset=0, p_offset=0, random_p_offset=0, synconpulse='false'):
         timing = ET.SubElement(self.simulation, 'timing')
@@ -224,14 +221,14 @@ class FersXMLGenerator:
         efficiency = ET.SubElement(antenna, 'efficiency')
         efficiency.text = str(eff)
 
-    def add_monostatic_radar(self, antenna, timing, prf, pulse, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, tx_type='pulsed', interp='linear'):
+    def add_monostatic_radar(self, antenna, timing, prf, waveform, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false', interp='linear'):
         platform = add_platform('radar_platform', self.simulation)
         add_motionpath(platform, position_waypoints, interp)
         add_rotationpath(platform, rotation_waypoints, interp)
-        add_monostatic(platform, 'receiver', tx_type, antenna, pulse, timing, prf, window_length, noise_temp, window_skip)
+        add_monostatic(platform, 'receiver', antenna, waveform, timing, prf, window_length, noise_temp, window_skip, nodirect, nopropagationloss)
 
     def add_target(self, fers_target: FersTarget, interp='linear'):
-        platform = add_platform('target_platform', self.simulation)
+        platform = add_platform('target_platform_' + fers_target.name, self.simulation)
         add_motionpath(platform, fers_target.position_waypoints, interp)
         add_fixedrotation(platform)
 
@@ -244,6 +241,9 @@ class FersXMLGenerator:
         t_rcs_v = ET.SubElement(t_rcs, 'value')
         t_rcs_v.text = str(fers_target.rcs)
 
+        model = ET.SubElement(target, 'model')
+        model.set('type', "constant")
+
     def write_xml(self):
         self.tree.write(self.filename,
                         pretty_print=True,
@@ -253,27 +253,31 @@ class FersXMLGenerator:
 
     def run(self):
         try:
-            sbp.run(['fers', self.filename])
+            sbp.run(['fers-cli', self.filename])
         except:
             print('ERROR: failed to launch - check that FERS is installed correctly.')
             exit(1)
 
-def add_monostatic(platform, name, tx_type, antenna, pulse, timing, prf, window_length, noise_temp=290, window_skip=0):
+def add_monostatic(platform, name, antenna, waveform, timing, prf, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false'):
     monostatic = ET.SubElement(platform, 'monostatic')
     monostatic.set('name', name)
-    monostatic.set('type', tx_type)
     monostatic.set('antenna', antenna)
-    monostatic.set('pulse', pulse)
+    monostatic.set('waveform', waveform)
     monostatic.set('timing', timing)
+    monostatic.set('nodirect', nodirect)
+    monostatic.set('nopropagationloss', nopropagationloss)
 
-    skip = ET.SubElement(monostatic, 'window_skip')
+    # TODO add cw mode
+    mode = ET.SubElement(monostatic, 'pulsed_mode')
+
+    rx_prf = ET.SubElement(mode, 'prf')
+    rx_prf.text = str(prf)
+
+    skip = ET.SubElement(mode, 'window_skip')
     skip.text = str(window_skip)
 
-    window = ET.SubElement(monostatic, 'window_length')
+    window = ET.SubElement(mode, 'window_length')
     window.text = str(window_length)
-
-    rx_prf = ET.SubElement(monostatic, 'prf')
-    rx_prf.text = str(prf)
 
     noise = ET.SubElement(monostatic, 'noise_temp')
     noise.text = str(noise_temp)
@@ -347,11 +351,11 @@ def add_positionwaypoint(path, waypoint: FersPositionWaypoint):
 def add_rotationwaypoint(path, waypoint: FersRotationWaypoint):
     point = ET.SubElement(path, 'rotationwaypoint')
 
-    t_el = ET.SubElement(point, 'elevation')
-    t_el.text = str(waypoint.el)
-
     t_az = ET.SubElement(point, 'azimuth')
     t_az.text = str(waypoint.az)
+
+    t_el = ET.SubElement(point, 'elevation')
+    t_el.text = str(waypoint.el)
 
     t_t = ET.SubElement(point, 'time')
     t_t.text = str(waypoint.t)
@@ -362,11 +366,11 @@ def add_fixedrotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0
     t_s_az = ET.SubElement(rotation, 'startazimuth')
     t_s_az.text = str(s_az)
 
-    t_az_r = ET.SubElement(rotation, 'azimuthrate')
-    t_az_r.text = str(az_rate)
-
     t_s_el = ET.SubElement(rotation, 'startelevation')
     t_s_el.text = str(s_el)
+
+    t_az_r = ET.SubElement(rotation, 'azimuthrate')
+    t_az_r.text = str(az_rate)
 
     t_el_r = ET.SubElement(rotation, 'elevationrate')
     t_el_r.text = str(el_rate)
