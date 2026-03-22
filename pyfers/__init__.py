@@ -360,7 +360,7 @@ def add_rotationwaypoint(path, waypoint: FersRotationWaypoint):
     t_t = ET.SubElement(point, 'time')
     t_t.text = str(waypoint.t)
 
-def add_fixedrotation(platform, s_az=2*np.pi, az_rate=0, s_el=2*np.pi, el_rate=0):
+def add_fixedrotation(platform, s_az=0, az_rate=0, s_el=0, el_rate=0):
     rotation = ET.SubElement(platform, 'fixedrotation')
 
     t_s_az = ET.SubElement(rotation, 'startazimuth')
