@@ -211,7 +211,7 @@ class Transmitter:
         return self._waveform.power * self._duty_cycle
 
 class Receiver:
-    def __init__(self, name:str, antenna:Antenna, clock:Clock, f_prf:float, range_gate:float=None, noise_temp:float=290):
+    def __init__(self, name:str, antenna:Antenna, clock:Clock, f_prf:float, gate:float=None, noise_temp:float=290):
         """
         Parameters
         ----------
@@ -223,7 +223,7 @@ class Receiver:
                 Timing source for the receiver.
             f_prf : float
                 The receiver pulse repetition frequency (Hz).
-            range_gate : float
+            gate : float
                 The extent of range to digitise (m). Starts from zero metres. If None, the maximum range gate is used.
             noise_temp : float
                 The noise temperature of the receiver (K).
@@ -232,13 +232,13 @@ class Receiver:
         self._antenna = antenna
         self._clock = clock
         self._f_prf = f_prf
-        self._range_gate = range_gate
+        self._gate = gate
         self._noise_temp = noise_temp
 
-        if self._range_gate is None:
-            self._range_gate = time_to_range(1/self._f_prf)
+        if self._gate is None:
+            self._gate = time_to_range(1/self._f_prf)
         else:
-            if (self._range_gate < 0) or (self._range_gate > time_to_range(1/self._f_prf)):
+            if (self._gate < 0) or (self._gate > time_to_range(1/self._f_prf)):
                 print("ERROR: Invalid range gate.")
 
     @property
@@ -255,11 +255,23 @@ class Receiver:
     @property
     def noise_power(self):
         """
-        Calculate the receiver noise power (W). Note that the receiver bandwidth is determined by the clock frequency.
+        Calculate the receiver noise power (W). Receiver bandwidth is determined by the clock frequency.
         """
         return self.noise_density * self._clock._frequency
 
-    # TODO add method for calculating ns_range_gate
+    @property
+    def gate(self):
+        """
+        Range gate of the receiver (m).
+        """
+        return self._gate
+
+    @property
+    def ns_gate(self):
+        """
+        Return the number of samples in the range gate. The ADC rate is determined by the clock frequency.
+        """
+        return int(np.ceil(self._clock._frequency * range_to_time(self._gate)))
 
 class Platform:
     """
@@ -345,7 +357,7 @@ class Platform:
 
     @property
     def n_samples(self):
-        return int(np.floor(self.duration * self.fs))
+        return int(np.ceil(self.duration * self.fs))
 
     @property
     def t(self):
