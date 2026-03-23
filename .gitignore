@@ -1,4 +1,6 @@
-tmp/
+test/*.h5
+test/*.xml
+test/*.fersxml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
