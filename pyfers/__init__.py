@@ -424,6 +424,20 @@ class Platform:
         """
         return self._el + self._el_noise
 
+    @property
+    def position_waypoints(self):
+        waypoints = []
+        for i in range(self.n_samples):
+            waypoints.append(FersPositionWaypoint(self.x[i], self.y[i], self.z[i], self.t[i]))
+        return waypoints
+
+    @property
+    def rotation_waypoints(self):
+        waypoints = []
+        for i in range(self.n_samples):
+            waypoints.append(FersRotationWaypoint(self.az[i], self.el[i], self.t[i]))
+        return waypoints
+
 def write_hdf5(dataset, filename):
     '''
     Write IQ data to an HDF5 file.
@@ -544,7 +558,7 @@ class FersXMLGenerator:
         rate.text = str(sim_rate)
 
         light_speed = ET.SubElement(parameters, 'c')
-        light_speed.text = str(299792458)
+        light_speed.text = str(constants.c)
 
         # sim_sample_rate = ET.SubElement(parameters, 'simSamplingRate')
         # sim_sample_rate.text = str(0)
