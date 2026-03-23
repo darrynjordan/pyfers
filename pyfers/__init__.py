@@ -73,6 +73,14 @@ class Antenna:
             print("ERROR: Unsupported antenna type.")
 
     @property
+    def name(self):
+        return self._name
+
+    @property
+    def efficiency(self):
+        return self._efficiency
+
+    @property
     def theta(self):
         return self._theta
 
@@ -181,6 +189,14 @@ class Clock:
         self._p_offset = p_offset
         self._random_f_offset = random_f_offset
         self._random_p_offset = random_p_offset
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def frequency(self):
+        return self._frequency
 
 class Transmitter:
     def __init__(self, antenna:Antenna, waveform:Waveform, clock:Clock, f_prf:float):
@@ -569,7 +585,7 @@ class FersXMLGenerator:
 
     def from_waveform(self, waveform:Waveform, filename:str):
         """
-        Add a waveform to the fersxml definition.
+        Add a Waveform instance to the fersxml definition.
 
         Parameters
         ----------
@@ -607,6 +623,9 @@ class FersXMLGenerator:
         # add_noise(timing, 1, 1e-6)
         # add_noise(timing, 2, 1e-6)
 
+    def from_clock(self, clock:Clock, synconpulse='false'):
+        self.add_clock(name=clock.name, frequency=clock.frequency, synconpulse=synconpulse)
+
     def add_antenna(self, name, pattern, eff=1, a=1, b=2, g=5, d=1, azscale=1, elscale=1, filename=None):
         antenna = ET.SubElement(self.simulation, 'antenna')
         antenna.set('name', name)
@@ -638,6 +657,31 @@ class FersXMLGenerator:
 
         efficiency = ET.SubElement(antenna, 'efficiency')
         efficiency.text = str(eff)
+
+    def from_antenna(self, antenna:Antenna, filename:str):
+        """
+        Add an Antenna instance to the fersxml definition.
+
+        Parameters
+        ----------
+            antenna : Antenna
+                Antenna instance to use as input.
+            filename : str
+                Filename to store antenna XML for FERS input.
+        """
+        # generate an antenna xml file
+        fers_antenna = FersAntennaXML(filename)
+
+        # FERS only accepts 0 to pi, assumes symmetry
+        # angles in radians, gain is linear
+        for i, angle in enumerate(antenna.theta):
+            if (angle >= 0) and (angle <= np.pi):
+                fers_antenna.add_gainsample(fers_antenna.azimuth, angle, antenna.az_pattern[i])
+                fers_antenna.add_gainsample(fers_antenna.elevation, angle, antenna.el_pattern[i])
+
+        fers_antenna.write_xml()
+
+        self.add_antenna(antenna.name, pattern='xml', eff=antenna.efficiency, filename=filename)
 
     def add_monostatic_radar(self, antenna, timing, prf, waveform, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false', interp='linear'):
         platform = self._add_platform('radar_platform', self.simulation)
