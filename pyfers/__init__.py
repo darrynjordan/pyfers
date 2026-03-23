@@ -142,6 +142,14 @@ class Waveform:
     def n_samples(self):
         return len(self._samples)
 
+    @property
+    def time_bandwidth(self):
+        """
+        Time-bandwidth product.
+        """
+        if type == 'pulse':
+            return self._bandwidth * self._t_pulse
+
 class Clock:
     def __init__(self, name:str, frequency:float, f_offset:float=0, random_f_offset:float=0, p_offset:float=0, random_p_offset:float=0):
         """
@@ -222,6 +230,7 @@ class Receiver:
         """
         self._name = name
         self._antenna = antenna
+        self._clock = clock
         self._f_prf = f_prf
         self._range_gate = range_gate
         self._noise_temp = noise_temp
@@ -242,6 +251,13 @@ class Receiver:
         Calculate the noise density (W/Hz).
         """
         return constants.Boltzmann * self._noise_temp
+
+    @property
+    def noise_power(self):
+        """
+        Calculate the receiver noise power (W). Note that the receiver bandwidth is determined by the clock frequency.
+        """
+        return self.noise_density * self._clock._frequency
 
     # TODO add method for calculating ns_range_gate
 
