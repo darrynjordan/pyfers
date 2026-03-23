@@ -222,15 +222,15 @@ class FersXMLGenerator:
         efficiency.text = str(eff)
 
     def add_monostatic_radar(self, antenna, timing, prf, waveform, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false', interp='linear'):
-        platform = add_platform('radar_platform', self.simulation)
-        add_motionpath(platform, position_waypoints, interp)
-        add_rotationpath(platform, rotation_waypoints, interp)
-        add_monostatic(platform, 'receiver', antenna, waveform, timing, prf, window_length, noise_temp, window_skip, nodirect, nopropagationloss)
+        platform = self._add_platform('radar_platform', self.simulation)
+        self._add_motionpath(platform, position_waypoints, interp)
+        self._add_rotationpath(platform, rotation_waypoints, interp)
+        self._add_monostatic(platform, 'receiver', antenna, waveform, timing, prf, window_length, noise_temp, window_skip, nodirect, nopropagationloss)
 
     def add_target(self, fers_target: FersTarget, interp='linear'):
-        platform = add_platform('target_platform_' + fers_target.name, self.simulation)
-        add_motionpath(platform, fers_target.position_waypoints, interp)
-        add_fixedrotation(platform)
+        platform = self._add_platform('target_platform_' + fers_target.name, self.simulation)
+        self._add_motionpath(platform, fers_target.position_waypoints, interp)
+        self._add_fixedrotation(platform)
 
         target = ET.SubElement(platform, 'target')
         target.set('name', fers_target.name)
@@ -258,129 +258,129 @@ class FersXMLGenerator:
             print('ERROR: failed to launch - check that FERS is installed correctly.')
             exit(1)
 
-def add_monostatic(platform, name, antenna, waveform, timing, prf, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false'):
-    monostatic = ET.SubElement(platform, 'monostatic')
-    monostatic.set('name', name)
-    monostatic.set('antenna', antenna)
-    monostatic.set('waveform', waveform)
-    monostatic.set('timing', timing)
-    monostatic.set('nodirect', nodirect)
-    monostatic.set('nopropagationloss', nopropagationloss)
+    def _add_monostatic(self, platform, name, antenna, waveform, timing, prf, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false'):
+        monostatic = ET.SubElement(platform, 'monostatic')
+        monostatic.set('name', name)
+        monostatic.set('antenna', antenna)
+        monostatic.set('waveform', waveform)
+        monostatic.set('timing', timing)
+        monostatic.set('nodirect', nodirect)
+        monostatic.set('nopropagationloss', nopropagationloss)
 
-    # TODO add cw mode
-    mode = ET.SubElement(monostatic, 'pulsed_mode')
+        # TODO add cw mode
+        mode = ET.SubElement(monostatic, 'pulsed_mode')
 
-    rx_prf = ET.SubElement(mode, 'prf')
-    rx_prf.text = str(prf)
+        rx_prf = ET.SubElement(mode, 'prf')
+        rx_prf.text = str(prf)
 
-    skip = ET.SubElement(mode, 'window_skip')
-    skip.text = str(window_skip)
+        skip = ET.SubElement(mode, 'window_skip')
+        skip.text = str(window_skip)
 
-    window = ET.SubElement(mode, 'window_length')
-    window.text = str(window_length)
+        window = ET.SubElement(mode, 'window_length')
+        window.text = str(window_length)
 
-    noise = ET.SubElement(monostatic, 'noise_temp')
-    noise.text = str(noise_temp)
+        noise = ET.SubElement(monostatic, 'noise_temp')
+        noise.text = str(noise_temp)
 
-def add_transmitter (platform, name, tx_type, antenna, pulse, timing, prf):
-    transmitter = ET.SubElement(platform, 'transmitter')
-    transmitter.set('name', name)
-    transmitter.set('type', tx_type)
-    transmitter.set('antenna', antenna)
-    transmitter.set('pulse', pulse)
-    transmitter.set('timing', timing)
+    def _add_transmitter(self, platform, name, tx_type, antenna, pulse, timing, prf):
+        transmitter = ET.SubElement(platform, 'transmitter')
+        transmitter.set('name', name)
+        transmitter.set('type', tx_type)
+        transmitter.set('antenna', antenna)
+        transmitter.set('pulse', pulse)
+        transmitter.set('timing', timing)
 
-    tx_prf = ET.SubElement(transmitter, 'prf')
-    tx_prf.text = str(prf)
+        tx_prf = ET.SubElement(transmitter, 'prf')
+        tx_prf.text = str(prf)
 
-def add_receiver (platform, name, nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp=290, window_skip=0):
-    receiver = ET.SubElement(platform, 'receiver')
-    receiver.set('name', name)
-    receiver.set('nodirect', nodirect)
-    receiver.set('antenna', antenna)
-    receiver.set('nopropagationloss', nopropagationloss)
-    receiver.set('timing', timing)
+    def _add_receiver(self, platform, name, nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp=290, window_skip=0):
+        receiver = ET.SubElement(platform, 'receiver')
+        receiver.set('name', name)
+        receiver.set('nodirect', nodirect)
+        receiver.set('antenna', antenna)
+        receiver.set('nopropagationloss', nopropagationloss)
+        receiver.set('timing', timing)
 
-    skip = ET.SubElement(receiver, 'window_skip')
-    skip.text = str(window_skip)
+        skip = ET.SubElement(receiver, 'window_skip')
+        skip.text = str(window_skip)
 
-    window = ET.SubElement(receiver, 'window_length')
-    window.text = str(window_length)
+        window = ET.SubElement(receiver, 'window_length')
+        window.text = str(window_length)
 
-    rx_prf = ET.SubElement(receiver, 'prf')
-    rx_prf.text = str(prf)
+        rx_prf = ET.SubElement(receiver, 'prf')
+        rx_prf.text = str(prf)
 
-    noise = ET.SubElement(receiver, 'noise_temp')
-    noise.text = str(noise_temp)
+        noise = ET.SubElement(receiver, 'noise_temp')
+        noise.text = str(noise_temp)
 
-def add_platform (name, root):
-    platform = ET.SubElement(root, 'platform')
-    platform.set('name', name)
-    return platform
+    def _add_platform(self, name, root):
+        platform = ET.SubElement(root, 'platform')
+        platform.set('name', name)
+        return platform
 
-def add_motionpath(platform, position_waypoints, interp='linear'):
-    motionpath = ET.SubElement(platform, 'motionpath')
-    motionpath.set('interpolation', interp)
+    def _add_motionpath(self, platform, position_waypoints, interp='linear'):
+        motionpath = ET.SubElement(platform, 'motionpath')
+        motionpath.set('interpolation', interp)
 
-    for waypoint in position_waypoints:
-        add_positionwaypoint(motionpath, waypoint)
-
-
-def add_rotationpath (platform, rotation_waypoints, interp='linear'):
-    rotationpath = ET.SubElement(platform, 'rotationpath')
-    rotationpath.set('interpolation', interp)
-
-    for waypoint in rotation_waypoints:
-        add_rotationwaypoint(rotationpath, waypoint)
-
-def add_positionwaypoint(path, waypoint: FersPositionWaypoint):
-    point = ET.SubElement(path, 'positionwaypoint')
-
-    t_x = ET.SubElement(point, 'x')
-    t_x.text = str(waypoint.x)
-
-    t_y = ET.SubElement(point, 'y')
-    t_y.text = str(waypoint.y)
-
-    t_a = ET.SubElement(point, 'altitude')
-    t_a.text = str(waypoint.z)
-
-    t_t = ET.SubElement(point, 'time')
-    t_t.text = str(waypoint.t)
-
-def add_rotationwaypoint(path, waypoint: FersRotationWaypoint):
-    point = ET.SubElement(path, 'rotationwaypoint')
-
-    t_az = ET.SubElement(point, 'azimuth')
-    t_az.text = str(waypoint.az)
-
-    t_el = ET.SubElement(point, 'elevation')
-    t_el.text = str(waypoint.el)
-
-    t_t = ET.SubElement(point, 'time')
-    t_t.text = str(waypoint.t)
-
-def add_fixedrotation(platform, s_az=0, az_rate=0, s_el=0, el_rate=0):
-    rotation = ET.SubElement(platform, 'fixedrotation')
-
-    t_s_az = ET.SubElement(rotation, 'startazimuth')
-    t_s_az.text = str(s_az)
-
-    t_s_el = ET.SubElement(rotation, 'startelevation')
-    t_s_el.text = str(s_el)
-
-    t_az_r = ET.SubElement(rotation, 'azimuthrate')
-    t_az_r.text = str(az_rate)
-
-    t_el_r = ET.SubElement(rotation, 'elevationrate')
-    t_el_r.text = str(el_rate)
+        for waypoint in position_waypoints:
+            self._add_positionwaypoint(motionpath, waypoint)
 
 
-def add_noise(clock, alpha, weight):
-    noise_entry = ET.SubElement(clock, 'noise_entry')
+    def _add_rotationpath(self, platform, rotation_waypoints, interp='linear'):
+        rotationpath = ET.SubElement(platform, 'rotationpath')
+        rotationpath.set('interpolation', interp)
 
-    t_alpha = ET.SubElement(noise_entry, 'alpha')
-    t_alpha.text = str(alpha)
+        for waypoint in rotation_waypoints:
+            self._add_rotationwaypoint(rotationpath, waypoint)
 
-    t_weight = ET.SubElement(noise_entry, 'weight')
-    t_weight.text = str(weight)
+    def _add_positionwaypoint(self, path, waypoint: FersPositionWaypoint):
+        point = ET.SubElement(path, 'positionwaypoint')
+
+        t_x = ET.SubElement(point, 'x')
+        t_x.text = str(waypoint.x)
+
+        t_y = ET.SubElement(point, 'y')
+        t_y.text = str(waypoint.y)
+
+        t_a = ET.SubElement(point, 'altitude')
+        t_a.text = str(waypoint.z)
+
+        t_t = ET.SubElement(point, 'time')
+        t_t.text = str(waypoint.t)
+
+    def _add_rotationwaypoint(self, path, waypoint: FersRotationWaypoint):
+        point = ET.SubElement(path, 'rotationwaypoint')
+
+        t_az = ET.SubElement(point, 'azimuth')
+        t_az.text = str(waypoint.az)
+
+        t_el = ET.SubElement(point, 'elevation')
+        t_el.text = str(waypoint.el)
+
+        t_t = ET.SubElement(point, 'time')
+        t_t.text = str(waypoint.t)
+
+    def _add_fixedrotation(self, platform, s_az=0, az_rate=0, s_el=0, el_rate=0):
+        rotation = ET.SubElement(platform, 'fixedrotation')
+
+        t_s_az = ET.SubElement(rotation, 'startazimuth')
+        t_s_az.text = str(s_az)
+
+        t_s_el = ET.SubElement(rotation, 'startelevation')
+        t_s_el.text = str(s_el)
+
+        t_az_r = ET.SubElement(rotation, 'azimuthrate')
+        t_az_r.text = str(az_rate)
+
+        t_el_r = ET.SubElement(rotation, 'elevationrate')
+        t_el_r.text = str(el_rate)
+
+
+    def _add_noise(self, clock, alpha, weight):
+        noise_entry = ET.SubElement(clock, 'noise_entry')
+
+        t_alpha = ET.SubElement(noise_entry, 'alpha')
+        t_alpha.text = str(alpha)
+
+        t_weight = ET.SubElement(noise_entry, 'weight')
+        t_weight.text = str(weight)
