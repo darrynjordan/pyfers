@@ -86,10 +86,12 @@ class Antenna:
 
 
 class Waveform:
-    def __init__(self, f_carrier:float, type:str, power:float, f_sample:float, bandwidth:float=None, t_pulse:float=None):
+    def __init__(self, name:str, f_carrier:float, type:str, power:float, f_sample:float, bandwidth:float=None, t_pulse:float=None):
         """
         Parameters
         ----------
+            name : str
+                Unique name for the waveform.
             f_carrier : float
                 Carrier frequency (Hz).
             type : str
@@ -103,6 +105,7 @@ class Waveform:
             t_pulse : float
                 Length of the pulse (s).
         """
+        self._name = name
         self._f_carrier = f_carrier
         self._type = type
         self._power = power
@@ -117,6 +120,10 @@ class Waveform:
 
         if type == 'pulse':
             self._samples = achirp(period=self._t_pulse, sample_rate=self._f_sample, bandwidth=self._bandwidth, tau=0)
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def f_carrier(self):
@@ -559,6 +566,20 @@ class FersXMLGenerator:
 
         pulsed_from_file = ET.SubElement(waveform, 'pulsed_from_file')
         pulsed_from_file.set('filename', waveform_file)
+
+    def from_waveform(self, waveform:Waveform, filename:str):
+        """
+        Add a waveform to the fersxml definition.
+
+        Parameters
+        ----------
+            waveform : Waveform
+                Waveform instance to use as input.
+            filename : str
+                Filename to store waveform for FERS input.
+        """
+        write_hdf5(waveform.samples, filename)
+        self.add_waveform(waveform.name, waveform_file=filename, power_watts=waveform.power, carrier_frequency=waveform.f_carrier)
 
     def add_clock(self, name, frequency, f_offset=0, random_f_offset=0, p_offset=0, random_p_offset=0, synconpulse='false'):
         timing = ET.SubElement(self.simulation, 'timing')
