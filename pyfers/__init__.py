@@ -701,7 +701,29 @@ class FersXMLGenerator:
         platform = self._add_platform('radar_platform', self.simulation)
         self._add_motionpath(platform, position_waypoints, interp)
         self._add_rotationpath(platform, rotation_waypoints, interp)
-        self._add_monostatic(platform, 'receiver', antenna, waveform, timing, prf, window_length, noise_temp, window_skip, nodirect, nopropagationloss)
+
+        monostatic = ET.SubElement(platform, 'monostatic')
+        monostatic.set('name', 'receiver')
+        monostatic.set('antenna', antenna)
+        monostatic.set('waveform', waveform)
+        monostatic.set('timing', timing)
+        monostatic.set('nodirect', nodirect)
+        monostatic.set('nopropagationloss', nopropagationloss)
+
+        # TODO add cw mode
+        mode = ET.SubElement(monostatic, 'pulsed_mode')
+
+        rx_prf = ET.SubElement(mode, 'prf')
+        rx_prf.text = str(prf)
+
+        skip = ET.SubElement(mode, 'window_skip')
+        skip.text = str(window_skip)
+
+        window = ET.SubElement(mode, 'window_length')
+        window.text = str(window_length)
+
+        noise = ET.SubElement(monostatic, 'noise_temp')
+        noise.text = str(noise_temp)
 
     def add_target(self, fers_target: FersTarget, interp='linear'):
         platform = self._add_platform('target_platform_' + fers_target.name, self.simulation)
@@ -734,32 +756,8 @@ class FersXMLGenerator:
             print('ERROR: failed to launch - check that FERS is installed correctly.')
             exit(1)
 
-    def _add_monostatic(self, platform, name, antenna, waveform, timing, prf, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false'):
-        monostatic = ET.SubElement(platform, 'monostatic')
-        monostatic.set('name', name)
-        monostatic.set('antenna', antenna)
-        monostatic.set('waveform', waveform)
-        monostatic.set('timing', timing)
-        monostatic.set('nodirect', nodirect)
-        monostatic.set('nopropagationloss', nopropagationloss)
-
-        # TODO add cw mode
-        mode = ET.SubElement(monostatic, 'pulsed_mode')
-
-        rx_prf = ET.SubElement(mode, 'prf')
-        rx_prf.text = str(prf)
-
-        skip = ET.SubElement(mode, 'window_skip')
-        skip.text = str(window_skip)
-
-        window = ET.SubElement(mode, 'window_length')
-        window.text = str(window_length)
-
-        noise = ET.SubElement(monostatic, 'noise_temp')
-        noise.text = str(noise_temp)
-
     def _add_transmitter(self, platform, name, tx_type, antenna, pulse, timing, prf):
-        transmitter = ET.SubElement(platform, 'transmitter')
+        transmitter = ET.SubElement(platform, 'transmitter_platform')
         transmitter.set('name', name)
         transmitter.set('type', tx_type)
         transmitter.set('antenna', antenna)
@@ -770,7 +768,7 @@ class FersXMLGenerator:
         tx_prf.text = str(prf)
 
     def _add_receiver(self, platform, name, nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp=290, window_skip=0):
-        receiver = ET.SubElement(platform, 'receiver')
+        receiver = ET.SubElement(platform, 'receiver_platform')
         receiver.set('name', name)
         receiver.set('nodirect', nodirect)
         receiver.set('antenna', antenna)
