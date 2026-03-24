@@ -281,6 +281,10 @@ class Receiver:
                 print("ERROR: Invalid range gate.")
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def noise_temp(self):
         return self._noise_temp
 
@@ -444,14 +448,14 @@ class Platform:
     def position_waypoints(self):
         waypoints = []
         for i in range(self.n_samples):
-            waypoints.append(FersPositionWaypoint(self.x[i], self.y[i], self.z[i], self.t[i]))
+            waypoints.append(PositionWaypoint(self.x[i], self.y[i], self.z[i], self.t[i]))
         return waypoints
 
     @property
     def rotation_waypoints(self):
         waypoints = []
         for i in range(self.n_samples):
-            waypoints.append(FersRotationWaypoint(self.az[i], self.el[i], self.t[i]))
+            waypoints.append(RotationWaypoint(self.az[i], self.el[i], self.t[i]))
         return waypoints
 
 def write_hdf5(dataset, filename):
@@ -502,14 +506,14 @@ def read_hdf5(filename):
     return dataset
 
 
-class FersTarget:
+class Target:
     def __init__(self, name, rcs, position_waypoints):
         self.name = name
         self.rcs = rcs
         self.position_waypoints = position_waypoints
 
 
-class FersPositionWaypoint:
+class PositionWaypoint:
     def __init__(self, x, y, z, t):
         self.x = x
         self.y = y
@@ -517,17 +521,17 @@ class FersPositionWaypoint:
         self.t = t
 
 
-class FersRotationWaypoint:
+class RotationWaypoint:
     def __init__(self, az, el, t):
         self.az = az
         self.el = el
         self.t = t
 
 
-class FersAntennaXML:
+class AntennaXML:
     def __init__(self, xml_filename):
         """
-        FersAntennaXML constructor.
+        AntennaXML constructor.
         """
         self.filename = xml_filename
         self.root = ET.Element('antenna')
@@ -551,14 +555,21 @@ class FersAntennaXML:
             xml_declaration=True)
 
 
-class FersXMLGenerator:
-    def __init__(self, sim_name:str, xml_filename:str):
+class Simulation:
+    def __init__(self, name:str, filename:str):
         """
-        FersXMLGenerator constructor.
+        Simulation constructor.
+
+        Parameters
+        ----------
+            name : str
+                Unique name for the simulation.
+            filename : str
+                Filename for the .fersxml simulation definition.
         """
-        self.filename = xml_filename
+        self.filename = os.path.abspath(filename)
         self.simulation = ET.Element('simulation')
-        self.simulation.set('name', sim_name)
+        self.simulation.set('name', name)
         self.tree = ET.ElementTree(self.simulation)
 
     def add_parameters(self, t_start, t_end, sim_rate, bits, over_sample=1):
@@ -611,6 +622,8 @@ class FersXMLGenerator:
             filename : str
                 Filename to store waveform for FERS input.
         """
+        filename = os.path.abspath(filename)
+
         write_hdf5(waveform.samples, filename)
 
         waveform_element = ET.SubElement(self.simulation, 'waveform')
@@ -662,8 +675,10 @@ class FersXMLGenerator:
             filename : str
                 Filename to store antenna XML for FERS input.
         """
+        filename = os.path.abspath(filename)
+
         # generate an antenna xml file
-        fers_antenna = FersAntennaXML(filename)
+        fers_antenna = AntennaXML(filename)
 
         # FERS only accepts 0 to pi, assumes symmetry
         # angles in radians, gain is linear
@@ -733,7 +748,7 @@ class FersXMLGenerator:
         noise = ET.SubElement(monostatic, 'noise_temp')
         noise.text = str(noise_temp)
 
-    def add_target(self, fers_target: FersTarget, interp='linear'):
+    def add_target(self, fers_target:Target, interp='linear'):
         platform = self._add_platform('target_platform_' + fers_target.name, self.simulation)
         self._add_motionpath(platform, fers_target.position_waypoints, interp)
         self._add_fixedrotation(platform)
@@ -815,7 +830,7 @@ class FersXMLGenerator:
         for waypoint in rotation_waypoints:
             self._add_rotationwaypoint(rotationpath, waypoint)
 
-    def _add_positionwaypoint(self, path, waypoint: FersPositionWaypoint):
+    def _add_positionwaypoint(self, path, waypoint: PositionWaypoint):
         point = ET.SubElement(path, 'positionwaypoint')
 
         t_x = ET.SubElement(point, 'x')
@@ -830,7 +845,7 @@ class FersXMLGenerator:
         t_t = ET.SubElement(point, 'time')
         t_t.text = str(waypoint.t)
 
-    def _add_rotationwaypoint(self, path, waypoint: FersRotationWaypoint):
+    def _add_rotationwaypoint(self, path, waypoint: RotationWaypoint):
         point = ET.SubElement(path, 'rotationwaypoint')
 
         t_az = ET.SubElement(point, 'azimuth')
