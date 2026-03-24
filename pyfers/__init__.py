@@ -198,6 +198,22 @@ class Clock:
     def frequency(self):
         return self._frequency
 
+    @property
+    def f_offset(self):
+        return self._f_offset
+
+    @property
+    def p_offset(self):
+        return self._p_offset
+
+    @property
+    def random_f_offset(self):
+        return self._random_f_offset
+
+    @property
+    def random_p_offset(self):
+        return self._random_p_offset
+
 class Transmitter:
     def __init__(self, antenna:Antenna, waveform:Waveform, clock:Clock, f_prf:float):
         """
@@ -584,20 +600,7 @@ class FersXMLGenerator:
         # coordinatesystem.set('zone', '32')
         # coordinatesystem.set('hemisphere', 'N') # N, S
 
-    def add_waveform(self, name, waveform_file, power_watts, carrier_frequency):
-        waveform = ET.SubElement(self.simulation, 'waveform')
-        waveform.set('name', name)
-
-        power = ET.SubElement(waveform, 'power')
-        power.text = str(power_watts)
-
-        carrier = ET.SubElement(waveform, 'carrier_frequency')
-        carrier.text = str(carrier_frequency)
-
-        pulsed_from_file = ET.SubElement(waveform, 'pulsed_from_file')
-        pulsed_from_file.set('filename', waveform_file)
-
-    def from_waveform(self, waveform:Waveform, filename:str):
+    def add_waveform(self, waveform:Waveform, filename:str):
         """
         Add a Waveform instance to the fersxml definition.
 
@@ -609,70 +612,46 @@ class FersXMLGenerator:
                 Filename to store waveform for FERS input.
         """
         write_hdf5(waveform.samples, filename)
-        self.add_waveform(waveform.name, waveform_file=filename, power_watts=waveform.power, carrier_frequency=waveform.f_carrier)
 
-    def add_clock(self, name, frequency, f_offset=0, random_f_offset=0, p_offset=0, random_p_offset=0, synconpulse='false'):
-        timing = ET.SubElement(self.simulation, 'timing')
-        timing.set('name', name)
-        timing.set('synconpulse', synconpulse)
+        waveform_element = ET.SubElement(self.simulation, 'waveform')
+        waveform_element.set('name', waveform.name)
 
-        freq = ET.SubElement(timing, 'frequency')
-        freq.text = str(frequency)
+        power = ET.SubElement(waveform_element, 'power')
+        power.text = str(waveform.power)
 
-        freq_offset = ET.SubElement(timing, 'freq_offset')
-        freq_offset.text = str(f_offset)
+        carrier = ET.SubElement(waveform_element, 'carrier_frequency')
+        carrier.text = str(waveform.f_carrier)
 
-        random_freq_offset = ET.SubElement(timing, 'random_freq_offset_stdev')
-        random_freq_offset.text = str(random_f_offset)
+        pulsed_from_file = ET.SubElement(waveform_element, 'pulsed_from_file')
+        pulsed_from_file.set('filename', filename)
 
-        phase_offset = ET.SubElement(timing, 'phase_offset')
-        phase_offset.text = str(p_offset)
+    def add_clock(self, clock:Clock, synconpulse='false'):
+        timing_element = ET.SubElement(self.simulation, 'timing')
+        timing_element.set('name', clock.name)
+        timing_element.set('synconpulse', synconpulse)
 
-        random_phase_offset = ET.SubElement(timing, 'random_phase_offset_stdev')
-        random_phase_offset.text = str(random_p_offset)
+        freq = ET.SubElement(timing_element, 'frequency')
+        freq.text = str(clock.frequency)
 
-        # add_noise(timing, -2, 1e-6)
-        # add_noise(timing, -1, 1e-6)
-        # add_noise(timing, 0, 1e-6)
-        # add_noise(timing, 1, 1e-6)
-        # add_noise(timing, 2, 1e-6)
+        freq_offset = ET.SubElement(timing_element, 'freq_offset')
+        freq_offset.text = str(clock.f_offset)
 
-    def from_clock(self, clock:Clock, synconpulse='false'):
-        self.add_clock(name=clock.name, frequency=clock.frequency, synconpulse=synconpulse)
+        random_freq_offset = ET.SubElement(timing_element, 'random_freq_offset_stdev')
+        random_freq_offset.text = str(clock.random_f_offset)
 
-    def add_antenna(self, name, pattern, eff=1, a=1, b=2, g=5, d=1, azscale=1, elscale=1, filename=None):
-        antenna = ET.SubElement(self.simulation, 'antenna')
-        antenna.set('name', name)
-        antenna.set('pattern', pattern)
+        phase_offset = ET.SubElement(timing_element, 'phase_offset')
+        phase_offset.text = str(clock.p_offset)
 
-        if (pattern == "xml"):
-            antenna.set('filename', filename)
+        random_phase_offset = ET.SubElement(timing_element, 'random_phase_offset_stdev')
+        random_phase_offset.text = str(clock.random_p_offset)
 
-        if (pattern == "parabolic"):
-            diameter = ET.SubElement(antenna, 'diameter')
-            diameter.text = str(d)
+        # add_noise(timing_element, -2, 1e-6)
+        # add_noise(timing_element, -1, 1e-6)
+        # add_noise(timing_element, 0, 1e-6)
+        # add_noise(timing_element, 1, 1e-6)
+        # add_noise(timing_element, 2, 1e-6)
 
-        if (pattern == "sinc"):
-            alpha = ET.SubElement(antenna, 'alpha')
-            alpha.text = str(a)
-
-            beta = ET.SubElement(antenna, 'beta')
-            beta.text = str(b)
-
-            gamma = ET.SubElement(antenna, 'gamma')
-            gamma.text = str(g)
-
-        if (pattern == "gaussian"):
-            az = ET.SubElement(antenna, 'azscale')
-            az.text = str(azscale)
-
-            el = ET.SubElement(antenna, 'elscale')
-            el.text = str(elscale)
-
-        efficiency = ET.SubElement(antenna, 'efficiency')
-        efficiency.text = str(eff)
-
-    def from_antenna(self, antenna:Antenna, filename:str):
+    def add_antenna(self, antenna:Antenna, filename:str):
         """
         Add an Antenna instance to the fersxml definition.
 
@@ -695,7 +674,36 @@ class FersXMLGenerator:
 
         fers_antenna.write_xml()
 
-        self.add_antenna(antenna.name, pattern='xml', eff=antenna.efficiency, filename=filename)
+        # currently only xml definitions are supported
+        pattern='xml'
+
+        antenna_element = ET.SubElement(self.simulation, 'antenna')
+        antenna_element.set('name', antenna.name)
+        antenna_element.set('pattern', pattern)
+
+        if (pattern == "xml"):
+            antenna_element.set('filename', filename)
+
+        # if (pattern == "parabolic"):
+        #     diameter = ET.SubElement(antenna_element, 'diameter')
+        #     diameter.text = str(d)
+
+        # if (pattern == "sinc"):
+        #     alpha = ET.SubElement(antenna_element, 'alpha')
+        #     alpha.text = str(a)
+        #     beta = ET.SubElement(antenna_element, 'beta')
+        #     beta.text = str(b)
+        #     gamma = ET.SubElement(antenna_element, 'gamma')
+        #     gamma.text = str(g)
+
+        # if (pattern == "gaussian"):
+        #     az = ET.SubElement(antenna_element, 'azscale')
+        #     az.text = str(azscale)
+        #     el = ET.SubElement(antenna_element, 'elscale')
+        #     el.text = str(elscale)
+
+        efficiency = ET.SubElement(antenna_element, 'efficiency')
+        efficiency.text = str(antenna.efficiency)
 
     def add_monostatic_radar(self, antenna, timing, prf, waveform, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false', interp='linear'):
         platform = self._add_platform('radar_platform', self.simulation)
