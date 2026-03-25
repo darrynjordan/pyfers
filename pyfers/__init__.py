@@ -31,6 +31,53 @@ def achirp(period, sample_rate, bandwidth, init_freq=0, tau=0, phi=0):
     t_chirp = np.linspace(-period/2, period/2, ns_chirp, endpoint=False)
     return np.exp(1.j*(np.pi*bandwidth/(2*max(t_chirp))*pow((t_chirp - tau), 2) + 2*np.pi*init_freq*(t_chirp - tau) + phi))
 
+def write_hdf5(dataset, filename):
+    '''
+    Write IQ data to an HDF5 file.
+    '''
+    h5 = h5py.File(filename, 'w')
+    h5.create_dataset('/I/value', data=np.real(dataset))
+    h5.create_dataset('/Q/value', data=np.imag(dataset))
+    h5.close()
+
+
+def read_hdf5(filename):
+    '''
+    Read IQ data from an HDF5 file.
+    '''
+    if (os.path.exists(filename) == False):
+        print("HDF5 file not found. Please check the path.")
+        exit()
+
+    h5 = h5py.File(filename, 'r')
+
+    dataset_list = list(h5.keys())
+
+    # read attributes
+    # attribute_list = h5[dataset_list[0]].attrs.keys()
+    # for attr in attribute_list:
+        # print(attr, h5[dataset_list[0]].attrs[attr])
+
+    scale = np.float64(h5[dataset_list[0]].attrs['fullscale'])
+    # rate = np.float64(h5[dataset_list[0]].attrs['rate'])
+    # time = np.float64(h5[dataset_list[0]].attrs['time'])
+
+    n_pulses = int(np.floor(np.size(dataset_list)/2))
+    ns_pulse = int(np.size(h5[dataset_list[0]]))
+
+    i_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
+    q_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
+
+    for i in range(0, n_pulses):
+        i_matrix[i, :] = np.array(h5[dataset_list[2*i + 0]], dtype='float64')
+        q_matrix[i, :] = np.array(h5[dataset_list[2*i + 1]], dtype='float64')
+
+    dataset = np.array(i_matrix + 1j*q_matrix).astype('complex128')
+
+    dataset *= scale
+
+    return dataset
+
 class Antenna:
     def __init__(self, name:str, type:str, gain:float, efficiency:float=1, az_beta=None, el_beta=None, az_gamma=None, el_gamma=None, az_factor=None, el_factor=None):
         """
@@ -317,14 +364,7 @@ class Receiver:
         return int(np.ceil(self._clock._frequency * range_to_time(self._gate)))
 
 class Platform:
-    """
-    Along-Track (m):    X-Axis
-    Cross-Track (m):    Y-Axis
-    Altitude (m):       Z-Axis
-    Azimuth (deg):      X-Y Plane
-    Elevation (deg):    X-Z Plane
-    """
-    def __init__(self, d:float, fs:float, altitude:float, velocity:float, depression:float=0, squint:float=0):
+    def __init__(self, d:float, fs:float):
         """
         Parameters
         ----------
@@ -332,45 +372,29 @@ class Platform:
                 Duration of platform motion (s).
             fs : float
                 Sample rate of platform motion (Hz).
-            altitude : float
-                Mean altitude of the platform (m).
-            velocity : float
-                Mean velocity of the platform (m/s).
-            depression : float
-                Mean depression angle of the sensor (deg).
-            squint : float
-                Mean squint angle of the platform (deg).
         """
         self.duration = d
         self.fs = fs
-        self.altitude = altitude
-        self.velocity = velocity
-        self.depression = depression
-        self.squint = squint
 
         # sampled time axis
         self._t = np.linspace(0, self.duration, self.n_samples, endpoint=False)
 
         # arrays that hold the ideal motion
-        self._x = self.velocity * self._t
-        self._y = np.zeros(self.n_samples)
-        self._z = self.altitude * np.ones(self.n_samples)
-        self._az = self.squint * np.ones(self.n_samples)
-        self._el = self.depression * np.ones(self.n_samples)
+        self._x = 0
+        self._y = 0
+        self._z = 0
+        self._az = 0
+        self._el = 0
 
-        # arrays that hold the deviations from ideal motion
-        self._x_noise = 0
-        self._y_noise = 0
-        self._z_noise = 0
-        self._az_noise = 0
-        self._el_noise = 0
-
-    def add_sinusoidal_noise(self, axis:str, amplitude:float, frequency:float, phase:float):
+    def add_motion(self, type:str, axis:str, constant:float=None, gradient:float=None, amplitude:float=None, frequency:float=None, phase:float=None):
         """
         Parameters
         ----------
+            type : str
+                Type of motion to apply.
+                ['constant', 'linear', 'sinusoid']
             axis : str
-                Axis to which the sinusoidal noise is applied.
+                Axis to which the motion is applied.
                 ['x', 'y', 'z', 'az', 'el']
             amplitude : float
                 Amplitude of the sinusoid (m).
@@ -379,24 +403,42 @@ class Platform:
             phase : float
                 Phase of the sinusoid (rad).
         """
-        if frequency > self.fs/2:
-            print("Error: The frequency of sinusoidal motion noise violates Nyquist. No noise applied.")
+
+        if type == 'constant':
+            if constant is None:
+                print("ERROR: Constant parameter is required.")
+                return
+            motion = constant * np.ones(self.n_samples)
+        elif type == 'linear':
+            if gradient is None:
+                print("ERROR: Gradient parameter is required.")
+                return
+            motion = gradient * self._t
+        elif type == 'sinusoid':
+            if (amplitude is None) or (frequency is None) or (phase is None):
+                print("ERROR: Amplitude, frequency, and phase parameters are required.")
+                return
+            if frequency > self.fs/2:
+                print("ERROR: Frequency violates Nyquist (< fs/2).")
+                return
+
+            motion = amplitude * np.sin(2*np.pi*frequency*self._t + phase)
+        else:
+            print("ERROR: Unsupported motion type, use ['constant', 'linear'].")
             return
 
-        noise = amplitude * np.sin(2*np.pi*frequency*self._t + phase)
-
         if axis.lower() == 'x':
-            self._x_noise += noise
+            self._x += motion
         elif axis.lower() == 'y':
-            self._y_noise += noise
+            self._y += motion
         elif axis.lower() == 'z':
-            self._z_noise += noise
+            self._z += motion
         elif axis.lower() == 'az':
-            self._az_noise += noise
+            self._az += motion
         elif axis.lower() == 'el':
-            self._el_noise += noise
+            self._el += motion
         else:
-            print("Error: Unknown axis, use ['x', 'y', 'z', 'az', 'el'].")
+            print("ERROR: Unknown axis, use ['x', 'y', 'z', 'az', 'el'].")
 
     @property
     def n_samples(self):
@@ -414,35 +456,35 @@ class Platform:
         """
         Sampled motion in x-axis (along-track).
         """
-        return self._x + self._x_noise
+        return self._x
 
     @property
     def y(self):
         """
         Sampled motion in y-axis (cross-track).
         """
-        return self._y + self._y_noise
+        return self._y
 
     @property
     def z(self):
         """
         Sampled motion in z-axis (altitude).
         """
-        return self._z + self._z_noise
+        return self._z
 
     @property
     def az(self):
         """
         Sampled motion in azimuth (squint).
         """
-        return self._az + self._az_noise
+        return self._az
 
     @property
     def el(self):
         """
         Sampled motion in elevation (depression).
         """
-        return self._el + self._el_noise
+        return self._el
 
     @property
     def position_waypoints(self):
@@ -457,53 +499,6 @@ class Platform:
         for i in range(self.n_samples):
             waypoints.append(RotationWaypoint(self.az[i], self.el[i], self.t[i]))
         return waypoints
-
-def write_hdf5(dataset, filename):
-    '''
-    Write IQ data to an HDF5 file.
-    '''
-    h5 = h5py.File(filename, 'w')
-    h5.create_dataset('/I/value', data=np.real(dataset))
-    h5.create_dataset('/Q/value', data=np.imag(dataset))
-    h5.close()
-
-
-def read_hdf5(filename):
-    '''
-    Read IQ data from an HDF5 file.
-    '''
-    if (os.path.exists(filename) == False):
-        print("HDF5 file not found. Please check the path.")
-        exit()
-
-    h5 = h5py.File(filename, 'r')
-
-    dataset_list = list(h5.keys())
-
-    # read attributes
-    # attribute_list = h5[dataset_list[0]].attrs.keys()
-    # for attr in attribute_list:
-        # print(attr, h5[dataset_list[0]].attrs[attr])
-
-    scale = np.float64(h5[dataset_list[0]].attrs['fullscale'])
-    # rate = np.float64(h5[dataset_list[0]].attrs['rate'])
-    # time = np.float64(h5[dataset_list[0]].attrs['time'])
-
-    n_pulses = int(np.floor(np.size(dataset_list)/2))
-    ns_pulse = int(np.size(h5[dataset_list[0]]))
-
-    i_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
-    q_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
-
-    for i in range(0, n_pulses):
-        i_matrix[i, :] = np.array(h5[dataset_list[2*i + 0]], dtype='float64')
-        q_matrix[i, :] = np.array(h5[dataset_list[2*i + 1]], dtype='float64')
-
-    dataset = np.array(i_matrix + 1j*q_matrix).astype('complex128')
-
-    dataset *= scale
-
-    return dataset
 
 
 class Target:
