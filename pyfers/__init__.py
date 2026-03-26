@@ -4,6 +4,7 @@ import numpy as np
 import subprocess as sbp
 import scipy.constants as constants
 from lxml import etree as ET
+from abc import ABC, abstractmethod
 
 def wavelength_to_frequency(wavelength):
     return constants.c/wavelength
@@ -262,10 +263,12 @@ class Clock:
         return self._random_p_offset
 
 class Transmitter:
-    def __init__(self, antenna:Antenna, waveform:Waveform, clock:Clock, f_prf:float):
+    def __init__(self, name:str, antenna:Antenna, waveform:Waveform, clock:Clock, f_prf:float):
         """
         Parameters
         ----------
+            name : str
+                Unique name for transmitter.
             antenna : Antenna
                 Antenna used for transmission.
             waveform : Waveform
@@ -275,10 +278,15 @@ class Transmitter:
             f_prf : float
                 Pulse repetition frequency (Hz).
         """
+        self._name = name
         self._antenna = antenna
         self._waveform = waveform
         self._clock = clock
         self._f_prf = f_prf
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def f_prf(self):
@@ -294,7 +302,7 @@ class Transmitter:
 
     @property
     def p_average(self):
-        return self._waveform.power * self._duty_cycle
+        return self._waveform.power * self.duty_cycle
 
 class Receiver:
     def __init__(self, name:str, antenna:Antenna, clock:Clock, f_prf:float, gate:float=None, noise_temp:float=290):
@@ -332,6 +340,10 @@ class Receiver:
         return self._name
 
     @property
+    def f_prf(self):
+        return self._f_prf
+
+    @property
     def noise_temp(self):
         return self._noise_temp
 
@@ -363,28 +375,152 @@ class Receiver:
         """
         return int(np.ceil(self._clock._frequency * range_to_time(self._gate)))
 
-class Platform:
-    def __init__(self, d:float, fs:float):
+class Platform(ABC):
+    def __init__(self, name:str, interpolation:str):
         """
         Parameters
         ----------
-            d : float
-                Duration of platform motion (s).
-            fs : float
-                Sample rate of platform motion (Hz).
+            name : str
+                Unique name for the platform.
+            interpolation : str
+                Type of interpolation to employ ['static', 'linear', 'cubic'].
         """
-        self.duration = d
-        self.fs = fs
 
-        # sampled time axis
-        self._t = np.linspace(0, self.duration, self.n_samples, endpoint=False)
-
-        # arrays that hold the ideal motion
+        self._name = name
+        self._interpolation = interpolation
+        self._t = 0
         self._x = 0
         self._y = 0
         self._z = 0
         self._az = 0
         self._el = 0
+
+        #TODO input validation for interpolation
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def interpolation(self):
+        return self._interpolation
+
+    @property
+    def t(self):
+        """
+        Sampled time axis.
+        """
+        return self._t
+
+    @property
+    def x(self):
+        """
+        Sampled motion in x-axis (along-track).
+        """
+        return self._x
+
+    @property
+    def y(self):
+        """
+        Sampled motion in y-axis (cross-track).
+        """
+        return self._y
+
+    @property
+    def z(self):
+        """
+        Sampled motion in z-axis (altitude).
+        """
+        return self._z
+
+    @property
+    def az(self):
+        """
+        Sampled motion in azimuth (squint).
+        """
+        return self._az
+
+    @property
+    def el(self):
+        """
+        Sampled motion in elevation (depression).
+        """
+        return self._el
+
+    @property
+    @abstractmethod
+    def n_samples(self):
+        """Must be implemented by all subclasses"""
+        pass
+
+    @property
+    def position_waypoints(self):
+        waypoints = []
+        for i in range(self.n_samples):
+            waypoints.append(PositionWaypoint(self.x[i], self.y[i], self.z[i], self.t[i]))
+        return waypoints
+
+    @property
+    def rotation_waypoints(self):
+        waypoints = []
+        for i in range(self.n_samples):
+            waypoints.append(RotationWaypoint(self.az[i], self.el[i], self.t[i]))
+        return waypoints
+
+class StaticPlatform(Platform):
+    def __init__(self, name:str, x:float=0, y:float=0, z:float=0, az:float=0, el:float=0):
+        """
+        Parameters
+        ----------
+            name : str
+                Unique name for the platform.
+            x : float
+                Position of platform in x-axis (m).
+            y : float
+                Position of platform in y-axis (m).
+            z : float
+                Position of platform in z-axis (m).
+            az : float
+                Orientation of platform in azimuth (rad).
+            el : float
+                Orientation of platform in elevation (rad).
+        """
+        super().__init__(name, 'static')
+
+        self._t = [0]
+        self._x = [x]
+        self._y = [y]
+        self._z = [z]
+        self._az = [az]
+        self._el = [el]
+
+    @property
+    def n_samples(self):
+        return 1
+
+class DynamicPlatform(Platform):
+    def __init__(self, name:str, d:float, fs:float, interpolation:str='linear'):
+        """
+        Parameters
+        ----------
+            name : str
+                Unique name for the platform.
+            d : float
+                Duration of platform motion (s).
+            fs : float
+                Sample rate of platform motion (Hz).
+            interpolation : str
+                Type of interpolation to employ ['linear', 'cubic'].
+        """
+        super().__init__(name, interpolation)
+
+        self._duration = d
+        self._fs = fs
+        self._t = np.linspace(0, self._duration, self.n_samples, endpoint=False)
+
+    @property
+    def n_samples(self):
+        return int(np.ceil(self._duration * self._fs))
 
     def add_motion(self, type:str, axis:str, constant:float=None, gradient:float=None, amplitude:float=None, frequency:float=None, phase:float=None):
         """
@@ -440,72 +576,36 @@ class Platform:
         else:
             print("ERROR: Unknown axis, use ['x', 'y', 'z', 'az', 'el'].")
 
-    @property
-    def n_samples(self):
-        return int(np.ceil(self.duration * self.fs))
-
-    @property
-    def t(self):
-        """
-        Sampled time axis.
-        """
-        return self._t
-
-    @property
-    def x(self):
-        """
-        Sampled motion in x-axis (along-track).
-        """
-        return self._x
-
-    @property
-    def y(self):
-        """
-        Sampled motion in y-axis (cross-track).
-        """
-        return self._y
-
-    @property
-    def z(self):
-        """
-        Sampled motion in z-axis (altitude).
-        """
-        return self._z
-
-    @property
-    def az(self):
-        """
-        Sampled motion in azimuth (squint).
-        """
-        return self._az
-
-    @property
-    def el(self):
-        """
-        Sampled motion in elevation (depression).
-        """
-        return self._el
-
-    @property
-    def position_waypoints(self):
-        waypoints = []
-        for i in range(self.n_samples):
-            waypoints.append(PositionWaypoint(self.x[i], self.y[i], self.z[i], self.t[i]))
-        return waypoints
-
-    @property
-    def rotation_waypoints(self):
-        waypoints = []
-        for i in range(self.n_samples):
-            waypoints.append(RotationWaypoint(self.az[i], self.el[i], self.t[i]))
-        return waypoints
-
 
 class Target:
-    def __init__(self, name, rcs, position_waypoints):
-        self.name = name
-        self.rcs = rcs
-        self.position_waypoints = position_waypoints
+    def __init__(self, name:str, rcs:float, platform:Platform, model:str='constant', pattern:str='isotropic'):
+        self._name = name
+        self._rcs = rcs
+        self._platform = platform
+        self._model = model
+        self._pattern = pattern
+
+        # TODO input validation for model and pattern
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def rcs(self):
+        return self._rcs
+
+    @property
+    def platform(self):
+        return self._platform
+
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def pattern(self):
+        return self._pattern
 
 
 class PositionWaypoint:
@@ -563,12 +663,12 @@ class Simulation:
                 Filename for the .fersxml simulation definition.
         """
         self.filename = os.path.abspath(filename)
-        self.simulation = ET.Element('simulation')
-        self.simulation.set('name', name)
-        self.tree = ET.ElementTree(self.simulation)
+        self.root = ET.Element('simulation')
+        self.root.set('name', name)
+        self.tree = ET.ElementTree(self.root)
 
     def add_parameters(self, t_start, t_end, sim_rate, bits, over_sample=1):
-        parameters = ET.SubElement(self.simulation, 'parameters')
+        parameters = ET.SubElement(self.root, 'parameters')
 
         starttime = ET.SubElement(parameters, 'starttime')
         starttime.text = str(t_start)
@@ -621,7 +721,7 @@ class Simulation:
 
         write_hdf5(waveform.samples, filename)
 
-        waveform_element = ET.SubElement(self.simulation, 'waveform')
+        waveform_element = ET.SubElement(self.root, 'waveform')
         waveform_element.set('name', waveform.name)
 
         power = ET.SubElement(waveform_element, 'power')
@@ -634,7 +734,7 @@ class Simulation:
         pulsed_from_file.set('filename', filename)
 
     def add_clock(self, clock:Clock, synconpulse='false'):
-        timing_element = ET.SubElement(self.simulation, 'timing')
+        timing_element = ET.SubElement(self.root, 'timing')
         timing_element.set('name', clock.name)
         timing_element.set('synconpulse', synconpulse)
 
@@ -687,7 +787,7 @@ class Simulation:
         # currently only xml definitions are supported
         pattern='xml'
 
-        antenna_element = ET.SubElement(self.simulation, 'antenna')
+        antenna_element = ET.SubElement(self.root, 'antenna')
         antenna_element.set('name', antenna.name)
         antenna_element.set('pattern', pattern)
 
@@ -715,16 +815,14 @@ class Simulation:
         efficiency = ET.SubElement(antenna_element, 'efficiency')
         efficiency.text = str(antenna.efficiency)
 
-    def add_monostatic_radar(self, antenna, timing, prf, waveform, position_waypoints, rotation_waypoints, window_length, noise_temp=290, window_skip=0, nodirect='false', nopropagationloss='false', interp='linear'):
-        platform = self._add_platform('radar_platform', self.simulation)
-        self._add_motionpath(platform, position_waypoints, interp)
-        self._add_rotationpath(platform, rotation_waypoints, interp)
+    def add_monostatic(self, platform:Platform, transmitter:Transmitter, receiver:Receiver, antenna:Antenna, waveform:Waveform, clock:Clock, window_skip=0, nodirect='false', nopropagationloss='false'):
+        platform_element = self._add_platform(platform)
 
-        monostatic = ET.SubElement(platform, 'monostatic')
-        monostatic.set('name', 'receiver')
-        monostatic.set('antenna', antenna)
-        monostatic.set('waveform', waveform)
-        monostatic.set('timing', timing)
+        monostatic = ET.SubElement(platform_element, 'monostatic')
+        monostatic.set('name', receiver.name)
+        monostatic.set('antenna', antenna.name)
+        monostatic.set('waveform', waveform.name)
+        monostatic.set('timing', clock.name)
         monostatic.set('nodirect', nodirect)
         monostatic.set('nopropagationloss', nopropagationloss)
 
@@ -732,33 +830,31 @@ class Simulation:
         mode = ET.SubElement(monostatic, 'pulsed_mode')
 
         rx_prf = ET.SubElement(mode, 'prf')
-        rx_prf.text = str(prf)
+        rx_prf.text = str(transmitter.f_prf)
 
         skip = ET.SubElement(mode, 'window_skip')
         skip.text = str(window_skip)
 
         window = ET.SubElement(mode, 'window_length')
-        window.text = str(window_length)
+        window.text = str(range_to_time(receiver.gate)) # time period
 
         noise = ET.SubElement(monostatic, 'noise_temp')
-        noise.text = str(noise_temp)
+        noise.text = str(receiver.noise_temp)
 
-    def add_target(self, fers_target:Target, interp='linear'):
-        platform = self._add_platform('target_platform_' + fers_target.name, self.simulation)
-        self._add_motionpath(platform, fers_target.position_waypoints, interp)
-        self._add_fixedrotation(platform)
+    def add_target(self, target:Target):
+        platform = self._add_platform(target.platform)
 
-        target = ET.SubElement(platform, 'target')
-        target.set('name', fers_target.name)
+        target_element = ET.SubElement(platform, 'target')
+        target_element.set('name', target.name)
 
-        t_rcs = ET.SubElement(target, 'rcs')
-        t_rcs.set('type', 'isotropic')
+        t_rcs = ET.SubElement(target_element, 'rcs')
+        t_rcs.set('type', target.pattern)
 
         t_rcs_v = ET.SubElement(t_rcs, 'value')
-        t_rcs_v.text = str(fers_target.rcs)
+        t_rcs_v.text = str(target.rcs)
 
-        model = ET.SubElement(target, 'model')
-        model.set('type', "constant")
+        model = ET.SubElement(target_element, 'model')
+        model.set('type', target.model)
 
     def write_xml(self):
         self.tree.write(self.filename,
@@ -774,58 +870,69 @@ class Simulation:
             print('ERROR: failed to launch - check that FERS is installed correctly.')
             exit(1)
 
-    def _add_transmitter(self, platform, name, tx_type, antenna, pulse, timing, prf):
-        transmitter = ET.SubElement(platform, 'transmitter_platform')
-        transmitter.set('name', name)
-        transmitter.set('type', tx_type)
-        transmitter.set('antenna', antenna)
-        transmitter.set('pulse', pulse)
-        transmitter.set('timing', timing)
+    def add_transmitter(self, platform:Platform, transmitter:Transmitter, antenna:Antenna, waveform:Waveform, clock:Clock):
+        platform_element = self._add_platform(platform)
 
-        tx_prf = ET.SubElement(transmitter, 'prf')
-        tx_prf.text = str(prf)
+        transmitter_element = ET.SubElement(platform_element, 'transmitter')
+        transmitter_element.set('name', transmitter.name)
+        transmitter_element.set('waveform', waveform.name)
+        transmitter_element.set('antenna', antenna.name)
+        transmitter_element.set('timing', clock.name)
 
-    def _add_receiver(self, platform, name, nodirect, antenna, nopropagationloss, timing, prf, window_length, noise_temp=290, window_skip=0):
-        receiver = ET.SubElement(platform, 'receiver_platform')
-        receiver.set('name', name)
-        receiver.set('nodirect', nodirect)
-        receiver.set('antenna', antenna)
-        receiver.set('nopropagationloss', nopropagationloss)
-        receiver.set('timing', timing)
+        # TODO add cw_mode
+        mode = ET.SubElement(transmitter_element, 'pulsed_mode')
 
-        skip = ET.SubElement(receiver, 'window_skip')
+        tx_prf = ET.SubElement(mode, 'prf')
+        tx_prf.text = str(transmitter.f_prf)
+
+    def add_receiver(self, platform:Platform, receiver:Receiver, antenna:Antenna, clock:Clock, window_skip=0, nodirect='false', nopropagationloss='false'):
+        platform_element = self._add_platform(platform)
+
+        receiver_element = ET.SubElement(platform_element, 'receiver')
+        receiver_element.set('name', receiver.name)
+        receiver_element.set('antenna', antenna.name)
+        receiver_element.set('timing', clock.name)
+        receiver_element.set('nodirect', nodirect)
+        receiver_element.set('nopropagationloss', nopropagationloss)
+
+        # TODO add cw_mode
+        mode = ET.SubElement(receiver_element, 'pulsed_mode')
+
+        rx_prf = ET.SubElement(mode, 'prf')
+        rx_prf.text = str(receiver.f_prf)
+
+        skip = ET.SubElement(mode, 'window_skip')
         skip.text = str(window_skip)
 
-        window = ET.SubElement(receiver, 'window_length')
-        window.text = str(window_length)
+        window = ET.SubElement(mode, 'window_length')
+        window.text = str(range_to_time(receiver.gate)) # time period
 
-        rx_prf = ET.SubElement(receiver, 'prf')
-        rx_prf.text = str(prf)
+        noise = ET.SubElement(receiver_element, 'noise_temp')
+        noise.text = str(receiver.noise_temp)
 
-        noise = ET.SubElement(receiver, 'noise_temp')
-        noise.text = str(noise_temp)
+    def _add_platform(self, platform:Platform) -> ET.SubElement:
+        # add platform parent
+        platform_element = ET.SubElement(self.root, 'platform')
+        platform_element.set('name', platform.name)
 
-    def _add_platform(self, name, root):
-        platform = ET.SubElement(root, 'platform')
-        platform.set('name', name)
-        return platform
+        # add motionpath child
+        motionpath = ET.SubElement(platform_element, 'motionpath')
+        motionpath.set('interpolation', platform.interpolation)
 
-    def _add_motionpath(self, platform, position_waypoints, interp='linear'):
-        motionpath = ET.SubElement(platform, 'motionpath')
-        motionpath.set('interpolation', interp)
+        for position_waypoint in platform.position_waypoints:
+            self._add_positionwaypoint(motionpath, position_waypoint)
 
-        for waypoint in position_waypoints:
-            self._add_positionwaypoint(motionpath, waypoint)
+        # add rotationpath child
+        rotationpath = ET.SubElement(platform_element, 'rotationpath')
+        rotationpath.set('interpolation', platform.interpolation)
+
+        for rotation_waypoint in platform.rotation_waypoints:
+            self._add_rotationwaypoint(rotationpath, rotation_waypoint)
+
+        return platform_element
 
 
-    def _add_rotationpath(self, platform, rotation_waypoints, interp='linear'):
-        rotationpath = ET.SubElement(platform, 'rotationpath')
-        rotationpath.set('interpolation', interp)
-
-        for waypoint in rotation_waypoints:
-            self._add_rotationwaypoint(rotationpath, waypoint)
-
-    def _add_positionwaypoint(self, path, waypoint: PositionWaypoint):
+    def _add_positionwaypoint(self, path, waypoint:PositionWaypoint):
         point = ET.SubElement(path, 'positionwaypoint')
 
         t_x = ET.SubElement(point, 'x')
@@ -840,7 +947,7 @@ class Simulation:
         t_t = ET.SubElement(point, 'time')
         t_t.text = str(waypoint.t)
 
-    def _add_rotationwaypoint(self, path, waypoint: RotationWaypoint):
+    def _add_rotationwaypoint(self, path, waypoint:RotationWaypoint):
         point = ET.SubElement(path, 'rotationwaypoint')
 
         t_az = ET.SubElement(point, 'azimuth')
