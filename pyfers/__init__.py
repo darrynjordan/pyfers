@@ -554,7 +554,7 @@ class DynamicPlatform(Platform):
             if (amplitude is None) or (frequency is None) or (phase is None):
                 print("ERROR: Amplitude, frequency, and phase parameters are required.")
                 return
-            if frequency > self.fs/2:
+            if frequency > self._fs/2:
                 print("ERROR: Frequency violates Nyquist (< fs/2).")
                 return
 
