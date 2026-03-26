@@ -12,7 +12,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    install_requires=['numpy', 'h5py'],
+    install_requires=['numpy', 'h5py', 'lxml', 'scipy'],
     keywords=['radar', 'simulation'],
     url="https://github.com/darrynjordan/FERS",
     classifiers=[
