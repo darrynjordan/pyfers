@@ -1,7 +1,7 @@
 import pyfers as fers
 
 # radar parameters
-chirp = fers.Waveform(name='chirp', f_carrier=9e6, type='pulse', power=20, f_sample=150e6, bandwidth=100e6, t_pulse=2e-6)
+chirp = fers.Waveform(name='chirp', f_carrier=9e9, type='pulse', power=20, f_sample=150e6, bandwidth=100e6, t_pulse=2e-6)
 antenna = fers.Antenna(name='antenna', type='sinc', gain=2, efficiency=1, az_beta=20, el_beta=5, az_gamma=2, el_gamma=2)
 clock = fers.Clock(name='clock', frequency=150e6)
 transmitter = fers.Transmitter(name='transmitter', antenna=antenna, waveform=chirp, clock=clock, f_prf=1000)
