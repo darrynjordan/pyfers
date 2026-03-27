@@ -198,6 +198,10 @@ class Waveform:
         return self._bandwidth
 
     @property
+    def t_pulse(self):
+        return self._t_pulse
+
+    @property
     def samples(self):
         return self._samples
 
