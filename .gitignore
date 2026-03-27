@@ -1,6 +1,6 @@
-test/*.h5
-test/*.xml
-test/*.fersxml
+examples/*.h5
+examples/*.xml
+examples/*.fersxml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
