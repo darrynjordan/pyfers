@@ -628,14 +628,48 @@ class RotationWaypoint:
 
 
 class AntennaXML:
-    def __init__(self, xml_filename):
+    def __init__(self, xml_filename, unit:str='rad', format:str='linear', symmetry:str='full'):
         """
         AntennaXML constructor.
+
+        Parameters
+        ----------
+            unit : str
+                Unit of the angle.
+                ['rad', 'deg']
+            format : str
+                Format of the angle.
+                ['linear', 'dBi']
+            symmetry : str
+                Symmetry of the antenna.
+                ['mirrored', 'full']
+
         """
         self.filename = xml_filename
         self.root = ET.Element('antenna')
-        self.elevation = ET.SubElement(self.root, 'elevation')
-        self.azimuth = ET.SubElement(self.root, 'azimuth')
+
+        if unit not in ['rad', 'deg']:
+            print("ERROR: Unsupported unit, use ['rad', 'deg'].")
+            return
+
+        if format not in ['linear', 'dBi']:
+            print("ERROR: Unsupported format, use ['linear', 'dBi'].")
+            return
+
+        if symmetry not in ['mirrored', 'full']:
+            print("ERROR: Unsupported symmetry, use ['mirrored', 'full'].")
+            return
+
+        self.azimuth_element = ET.SubElement(self.root, 'azimuth')
+        self.azimuth_element.set('unit', unit)
+        self.azimuth_element.set('format', format)
+        self.azimuth_element.set('symmetry', symmetry)
+
+        self.elevation_element = ET.SubElement(self.root, 'elevation')
+        self.elevation_element.set('unit', unit)
+        self.elevation_element.set('format', format)
+        self.elevation_element.set('symmetry', symmetry)
+
         self.tree = ET.ElementTree(self.root)
 
     def add_gainsample(self, plane, angle, gain):
@@ -777,14 +811,11 @@ class Simulation:
         filename = os.path.abspath(filename)
 
         # generate an antenna xml file
-        fers_antenna = AntennaXML(filename)
+        fers_antenna = AntennaXML(filename, unit='rad', format='linear', symmetry='full')
 
-        # FERS only accepts 0 to pi, assumes symmetry
-        # angles in radians, gain is linear
         for i, angle in enumerate(antenna.theta):
-            if (angle >= 0) and (angle <= np.pi):
-                fers_antenna.add_gainsample(fers_antenna.azimuth, angle, antenna.az_pattern[i])
-                fers_antenna.add_gainsample(fers_antenna.elevation, angle, antenna.el_pattern[i])
+            fers_antenna.add_gainsample(fers_antenna.azimuth_element, angle, antenna.az_pattern[i])
+            fers_antenna.add_gainsample(fers_antenna.elevation_element, angle, antenna.el_pattern[i])
 
         fers_antenna.write_xml()
 
