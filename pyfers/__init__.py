@@ -628,7 +628,7 @@ class RotationWaypoint:
 
 
 class AntennaXML:
-    def __init__(self, xml_filename, unit:str='rad', format:str='linear', symmetry:str='full'):
+    def __init__(self, xml_filename, unit:str='rad', format:str='linear', symmetry:str='none'):
         """
         AntennaXML constructor.
 
@@ -642,7 +642,7 @@ class AntennaXML:
                 ['linear', 'dBi']
             symmetry : str
                 Symmetry of the antenna.
-                ['mirrored', 'full']
+                ['mirrored', 'none']
 
         """
         self.filename = xml_filename
@@ -656,8 +656,8 @@ class AntennaXML:
             print("ERROR: Unsupported format, use ['linear', 'dBi'].")
             return
 
-        if symmetry not in ['mirrored', 'full']:
-            print("ERROR: Unsupported symmetry, use ['mirrored', 'full'].")
+        if symmetry not in ['mirrored', 'none']:
+            print("ERROR: Unsupported symmetry, use ['mirrored', 'none'].")
             return
 
         self.azimuth_element = ET.SubElement(self.root, 'azimuth')
@@ -811,7 +811,7 @@ class Simulation:
         filename = os.path.abspath(filename)
 
         # generate an antenna xml file
-        fers_antenna = AntennaXML(filename, unit='rad', format='linear', symmetry='full')
+        fers_antenna = AntennaXML(filename, unit='rad', format='linear', symmetry='none')
 
         for i, angle in enumerate(antenna.theta):
             fers_antenna.add_gainsample(fers_antenna.azimuth_element, angle, antenna.az_pattern[i])
