@@ -50,34 +50,30 @@ def read_hdf5(filename):
         print("HDF5 file not found. Please check the path.")
         exit()
 
-    h5 = h5py.File(filename, 'r')
+    with h5py.File(filename, 'r') as h5:
+        dataset_list = list(h5.keys())
 
-    dataset_list = list(h5.keys())
+        # # read attributes
+        # attribute_list = h5[dataset_list[0]].attrs.keys()
+        # for attr in attribute_list:
+        #     print(attr, h5[dataset_list[0]].attrs[attr])
 
-    # read attributes
-    # attribute_list = h5[dataset_list[0]].attrs.keys()
-    # for attr in attribute_list:
-        # print(attr, h5[dataset_list[0]].attrs[attr])
+        n_pulses = int(np.floor(np.size(dataset_list)/2))
 
-    scale = np.float64(h5[dataset_list[0]].attrs['fullscale'])
-    # rate = np.float64(h5[dataset_list[0]].attrs['rate'])
-    # time = np.float64(h5[dataset_list[0]].attrs['time'])
+        # assumed to be the same across all datasets
+        ns_pulse = int(h5[dataset_list[0]].attrs['sample_count'])
 
-    n_pulses = int(np.floor(np.size(dataset_list)/2))
-    ns_pulse = int(np.size(h5[dataset_list[0]]))
+        i_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
+        q_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
 
-    i_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
-    q_matrix = np.zeros((n_pulses, ns_pulse), dtype='float64')
+        for i in range(0, n_pulses):
+            # rate = np.float64(h5[dataset_list[2*i + 0]].attrs['rate'])
+            # time = np.float64(h5[dataset_list[2*i + 0]].attrs['time'])
+            scale = np.float64(h5[dataset_list[2*i + 0]].attrs['fullscale'])
+            i_matrix[i, :] = scale * np.array(h5[dataset_list[2*i + 0]], dtype='float64')
+            q_matrix[i, :] = scale * np.array(h5[dataset_list[2*i + 1]], dtype='float64')
 
-    for i in range(0, n_pulses):
-        i_matrix[i, :] = np.array(h5[dataset_list[2*i + 0]], dtype='float64')
-        q_matrix[i, :] = np.array(h5[dataset_list[2*i + 1]], dtype='float64')
-
-    dataset = np.array(i_matrix + 1j*q_matrix).astype('complex128')
-
-    dataset *= scale
-
-    return dataset
+        return np.array(i_matrix + 1j*q_matrix).astype('complex128')
 
 class Antenna:
     def __init__(self, name:str, type:str, gain:float, efficiency:float=1, az_alpha=None, el_alpha=None, az_beta=None, el_beta=None, az_gamma=None, el_gamma=None):
