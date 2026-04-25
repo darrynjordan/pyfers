@@ -80,7 +80,7 @@ def read_hdf5(filename):
     return dataset
 
 class Antenna:
-    def __init__(self, name:str, type:str, gain:float, efficiency:float=1, az_beta=None, el_beta=None, az_gamma=None, el_gamma=None, az_factor=None, el_factor=None):
+    def __init__(self, name:str, type:str, gain:float, efficiency:float=1, az_alpha=None, el_alpha=None, az_beta=None, el_beta=None, az_gamma=None, el_gamma=None):
         """
         Parameters
         ----------
@@ -100,25 +100,55 @@ class Antenna:
         self._theta = np.linspace(-np.pi, np.pi, 1001, endpoint=False)
         self._az_pattern = None
         self._el_pattern = None
+        self._az_beamwidth = None
+        self._el_beamwidth = None
 
-        if self._type == 'sinc':
+        if self._type == 'gaussian':
+            if (az_alpha is None) or (el_alpha is None):
+                print("ERROR: Alpha parameters are required for gaussian antenna.")
+            self._az_alpha = az_alpha
+            self._el_alpha = el_alpha
+            self._az_pattern = self._gaussian_pattern(self._az_alpha)
+            self._el_pattern = self._gaussian_pattern(self._el_alpha)
+            self._az_beamwidth = self._gaussian_beamwidth(self._az_alpha)
+            self._el_beamwidth = self._gaussian_beamwidth(self._el_alpha)
+        elif self._type == 'sinc':
             if (az_beta is None) or (el_beta is None) or (az_gamma is None) or (el_gamma is None):
-                print("ERROR: All beta and gamma parameters are required for sinc antenna.")
+                print("ERROR: Beta and Gamma parameters are required for sinc antenna.")
             self._az_beta = az_beta
             self._el_beta = el_beta
             self._az_gamma = az_gamma
             self._el_gamma = el_gamma
-            self._az_pattern = self._gain * pow((np.sin(self._az_beta*self._theta)/(self._az_beta*self._theta)), self._az_gamma)
-            self._el_pattern = self._gain * pow((np.sin(self._el_beta*self._theta)/(self._el_beta*self._theta)), self._el_gamma)
-        elif self._type == 'gaussian':
-            if (az_factor is None) or (el_factor is None):
-                print("ERROR: All factor parameters are required for gaussian antenna.")
-            self._az_factor = az_factor
-            self._el_factor = el_factor
-            self._az_pattern = self._gain * np.exp(-1*pow(self._theta, 2)*self._az_factor)
-            self._el_pattern = self._gain * np.exp(-1*pow(self._theta, 2)*self._el_factor)
+            self._az_pattern = self._sinc_pattern(self._az_beta, self._az_gamma)
+            self._el_pattern = self._sinc_pattern(self._el_beta, self._el_gamma)
+            self._az_beamwidth = self._sinc_beamwidth(self._az_beta, self._az_gamma)
+            self._el_beamwidth = self._sinc_beamwidth(self._el_beta, self._el_gamma)
         else:
             print("ERROR: Unsupported antenna type.")
+
+    def _gaussian_pattern(self, alpha):
+        """
+        Calculate the gain pattern of a Gaussian antenna.
+        """
+        return self._gain * np.exp(-1*pow(self._theta, 2)*alpha)
+
+    def _gaussian_beamwidth(self, alpha):
+        """
+        Calculate the beamwidth of a Gaussian antenna.
+        """
+        return 2*np.sqrt(np.log(2)/alpha)
+
+    def _sinc_pattern(self, beta, gamma):
+        """
+        Calculate the gain pattern of a sinc antenna.
+        """
+        return self._gain * pow((np.sin(beta*self._theta)/(beta*self._theta)), gamma)
+
+    def _sinc_beamwidth(self, beta, gamma):
+        """
+        Calculate the beamwidth of a sinc antenna.
+        """
+        return 2/beta * np.sqrt(6 * (1 - np.pow(2, (-1/gamma))))
 
     @property
     def name(self):
@@ -140,6 +170,26 @@ class Antenna:
     def el_pattern(self):
         return self._el_pattern
 
+    @property
+    def az_beamwidth(self):
+        """
+        Return the azimuth 3 dB beamwidth (rad).
+        """
+        return self._az_beamwidth
+
+    @property
+    def el_beamwidth(self):
+        """
+        Return the elevation 3 dB beamwidth (rad).
+        """
+        return self._el_beamwidth
+
+    @property
+    def gain(self):
+        """
+        Return the antenna gain (dBi).
+        """
+        return linear_to_dB(self._gain)
 
 class Waveform:
     def __init__(self, name:str, f_carrier:float, type:str, power:float, f_sample:float, bandwidth:float=None, t_pulse:float=None):
